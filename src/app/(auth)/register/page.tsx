@@ -1,0 +1,223 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+
+export default function RegisterPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    specialty: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  })
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+
+    if (form.password !== form.confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+    if (form.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+
+    setLoading(true)
+
+    const supabase = createClient()
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim()
+
+    // 1. Crear usuario en Supabase Auth
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { data: { full_name: fullName } },
+    })
+
+    if (signUpError) {
+      setError(signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    // 2. Crear registro Doctor en Prisma vía API
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: fullName,
+        specialty: form.specialty,
+        email: form.email,
+        phone: form.phone || null,
+        authId: data.user?.id,
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? 'Error al crear tu perfil. Contacta soporte.')
+      setLoading(false)
+      return
+    }
+
+    router.push('/dashboard')
+    router.refresh()
+  }
+
+  return (
+    <>
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900">Crea tu cuenta</h2>
+        <p className="text-gray-500 mt-1">Únete a MedSara y transforma tu práctica médica</p>
+      </div>
+
+      {error && (
+        <div className="mb-5 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Nombre</label>
+            <input
+              type="text"
+              name="firstName"
+              value={form.firstName}
+              onChange={handleChange}
+              placeholder="Stéfanny"
+              required
+              autoComplete="given-name"
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label">Apellido</label>
+            <input
+              type="text"
+              name="lastName"
+              value={form.lastName}
+              onChange={handleChange}
+              placeholder="Medrano"
+              required
+              autoComplete="family-name"
+              className="input"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Especialidad</label>
+          <input
+            type="text"
+            name="specialty"
+            value={form.specialty}
+            onChange={handleChange}
+            placeholder="Medicina Interna"
+            required
+            className="input"
+          />
+        </div>
+
+        <div>
+          <label className="label">Correo electrónico</label>
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="doctora@ejemplo.com"
+            required
+            autoComplete="email"
+            className="input"
+          />
+        </div>
+
+        <div>
+          <label className="label">
+            Teléfono <span className="text-gray-400 font-normal">(opcional)</span>
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            placeholder="+593 998 176 580"
+            autoComplete="tel"
+            className="input"
+          />
+        </div>
+
+        <div>
+          <label className="label">Contraseña</label>
+          <input
+            type="password"
+            name="password"
+            value={form.password}
+            onChange={handleChange}
+            placeholder="Mínimo 8 caracteres"
+            required
+            autoComplete="new-password"
+            className="input"
+          />
+        </div>
+
+        <div>
+          <label className="label">Confirmar contraseña</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            value={form.confirmPassword}
+            onChange={handleChange}
+            placeholder="Repite tu contraseña"
+            required
+            autoComplete="new-password"
+            className="input"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary w-full justify-center disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        >
+          {loading ? 'Creando cuenta...' : 'Crear cuenta gratuita'}
+        </button>
+
+        <p className="text-xs text-gray-400 text-center">
+          Al registrarte, aceptas nuestros{' '}
+          <Link href="/terms" className="underline">
+            Términos de servicio
+          </Link>{' '}
+          y{' '}
+          <Link href="/privacy" className="underline">
+            Política de privacidad
+          </Link>
+          .
+        </p>
+      </form>
+
+      <p className="text-center text-gray-500 text-sm mt-6">
+        ¿Ya tienes cuenta?{' '}
+        <Link href="/login" className="text-primary font-semibold hover:underline">
+          Inicia sesión
+        </Link>
+      </p>
+    </>
+  )
+}
