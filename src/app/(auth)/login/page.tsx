@@ -17,17 +17,23 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const supabase = createClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (authError) {
-      setError('Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.')
+      if (authError) {
+        setError('Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.')
+        return
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error inesperado'
+      setError(`No se pudo conectar con el servidor de autenticación. ${msg}`)
+    } finally {
       setLoading(false)
-      return
     }
-
-    router.push('/dashboard')
-    router.refresh()
   }
 
   return (
