@@ -2,11 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -26,8 +24,8 @@ export default function LoginPage() {
         return
       }
 
-      router.push('/dashboard')
-      router.refresh()
+      // Forzar recarga completa para que el middleware lea las cookies de sesión
+      window.location.href = '/dashboard'
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error inesperado'
       setError(`No se pudo conectar con el servidor de autenticación. ${msg}`)
