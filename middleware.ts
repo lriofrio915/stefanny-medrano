@@ -29,6 +29,13 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
+  console.log('MIDDLEWARE:', {
+    pathname,
+    hasUser: !!user,
+    userId: user?.id,
+    cookies: request.cookies.getAll().map(c => c.name)
+  })
+
   const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password'
 
   const isProtectedRoute =
