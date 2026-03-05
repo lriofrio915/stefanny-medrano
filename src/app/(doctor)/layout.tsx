@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import LogoutButton from '@/components/LogoutButton'
 import DarkModeToggle from '@/components/DarkModeToggle'
+import SaraLogo from '@/components/SaraLogo'
 import { getInitials } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -49,18 +50,8 @@ export default async function DoctorLayout({ children }: { children: React.React
         <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 shadow-sm flex flex-col">
           {/* Logo + dark toggle */}
           <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <Image
-                src="https://i.ibb.co/pjdT6ncH/logo-de-la-doctora-medrano.png"
-                alt="Logo"
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 dark:text-white text-sm">MedSara</p>
-                <p className="text-gray-400 dark:text-gray-500 text-xs">Panel Médico</p>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <SaraLogo size="sm" />
               <DarkModeToggle />
             </div>
           </div>

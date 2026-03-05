@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import SaraLogo from '@/components/SaraLogo'
 
 export const metadata = {
   title: 'Términos y Condiciones — Sara',
@@ -11,15 +12,7 @@ export default function TermsPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 py-4 px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: 'linear-gradient(135deg, #2563EB, #0D9488)' }}
-            >
-              S
-            </div>
-            <span className="font-bold text-gray-900">Sara</span>
-          </Link>
+          <SaraLogo size="sm" />
           <Link href="/" className="text-sm text-gray-500 hover:text-primary transition-colors">
             ← Volver al inicio
           </Link>

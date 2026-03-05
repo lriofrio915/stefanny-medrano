@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import SaraLogo from '@/components/SaraLogo'
 
 type Step = 1 | 2 | 3
 
@@ -120,15 +120,8 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-8">
-        <Image
-          src="https://i.ibb.co/pjdT6ncH/logo-de-la-doctora-medrano.png"
-          alt="MedSara"
-          width={40}
-          height={40}
-          className="rounded-full"
-        />
-        <span className="font-bold text-gray-900 text-lg">MedSara</span>
+      <div className="mb-8">
+        <SaraLogo />
       </div>
 
       {/* Progress steps */}

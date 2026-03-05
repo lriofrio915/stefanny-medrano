@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import SaraLogo from '@/components/SaraLogo'
 
 interface DoctorResult {
   id: string
@@ -45,12 +45,7 @@ export default function BuscarMedicoPage() {
       {/* Header */}
       <header className="bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
-              M
-            </div>
-            <span className="font-bold text-gray-900">MedSara</span>
-          </Link>
+          <SaraLogo size="sm" />
           <Link href="/login" className="text-sm text-gray-500 hover:text-gray-700 font-medium">
             Soy médico →
           </Link>
