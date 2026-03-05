@@ -43,12 +43,23 @@ export async function PATCH(req: Request) {
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { name, specialty, phone, bio, avatarUrl, address, whatsapp, schedules, services } = body
+    const { name, specialty, phone, bio, avatarUrl, address, whatsapp, schedules, services, slug } = body
 
     const doctor = await prisma.doctor.findFirst({
       where: { OR: [{ id: user.id }, { email: user.email! }] },
     })
     if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 })
+
+    if (slug !== undefined) {
+      const clean = String(slug).toLowerCase().replace(/[^a-z0-9-]/g, '')
+      if (!clean || clean.length < 3) {
+        return NextResponse.json({ error: 'El nombre de página debe tener al menos 3 caracteres (letras, números y guiones)' }, { status: 400 })
+      }
+      const existing = await prisma.doctor.findFirst({ where: { slug: clean, NOT: { id: doctor.id } } })
+      if (existing) {
+        return NextResponse.json({ error: 'Ese nombre de página ya está en uso, elige otro' }, { status: 409 })
+      }
+    }
 
     const updated = await prisma.doctor.update({
       where: { id: doctor.id },
@@ -62,6 +73,7 @@ export async function PATCH(req: Request) {
         ...(whatsapp !== undefined && { whatsapp: whatsapp || null }),
         ...(schedules !== undefined && { schedules: schedules || null }),
         ...(services !== undefined && { services: services || null }),
+        ...(slug !== undefined && { slug: String(slug).toLowerCase().replace(/[^a-z0-9-]/g, '') }),
       },
       select: {
         id: true,

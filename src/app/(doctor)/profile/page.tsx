@@ -8,6 +8,7 @@ import { getInitials } from '@/lib/utils'
 
 interface DoctorProfile {
   id: string
+  slug: string
   name: string
   specialty: string
   email: string
@@ -29,7 +30,9 @@ export default function ProfilePage() {
     address: '',
     whatsapp: '',
     schedules: '',
+    slug: '',
   })
+  const [copied, setCopied] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -51,13 +54,25 @@ export default function ProfilePage() {
           address: data.address ?? '',
           whatsapp: data.whatsapp ?? '',
           schedules: data.schedules ?? '',
+          slug: data.slug ?? '',
         })
       })
       .catch(() => setError('Error cargando perfil'))
   }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    const sanitized = name === 'slug'
+      ? value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+      : value
+    setForm((prev) => ({ ...prev, [name]: sanitized }))
+  }
+
+  async function copyLink() {
+    const url = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://sara.consultorio.site'}/${form.slug}`
+    await navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -100,7 +115,7 @@ export default function ProfilePage() {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, avatarUrl }),
+        body: JSON.stringify({ ...form, avatarUrl, slug: form.slug }),
       })
 
       if (!res.ok) {
@@ -110,6 +125,7 @@ export default function ProfilePage() {
 
       const updated: DoctorProfile = await res.json()
       setProfile(updated)
+      setForm((prev) => ({ ...prev, slug: updated.slug }))
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
@@ -325,6 +341,102 @@ export default function ProfilePage() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition resize-none"
             />
           </div>
+        </div>
+
+        {/* Página pública */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 space-y-5">
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Tu página pública</h2>
+            <p className="text-gray-400 text-xs mt-0.5">Comparte este link con tus pacientes para que puedan agendar citas y chatear con Sara.</p>
+          </div>
+
+          {/* Slug editor */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Nombre de tu página
+            </label>
+            <div className="flex items-center rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary transition">
+              <span className="px-3 py-3 bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500 text-sm border-r border-gray-200 dark:border-gray-600 whitespace-nowrap">
+                sara.consultorio.site/
+              </span>
+              <input
+                type="text"
+                name="slug"
+                value={form.slug}
+                onChange={handleChange}
+                placeholder="dra-medrano"
+                className="flex-1 px-3 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none placeholder-gray-400"
+              />
+            </div>
+            <p className="text-gray-400 text-xs mt-1">Solo letras minúsculas, números y guiones. Mín. 3 caracteres.</p>
+          </div>
+
+          {/* Link público + copiar */}
+          {form.slug && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
+              <p className="text-xs text-blue-500 font-semibold mb-2 uppercase tracking-wide">Tu link público</p>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://sara.consultorio.site'}/${form.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-blue-700 dark:text-blue-400 text-sm font-mono truncate hover:underline"
+                >
+                  {`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://sara.consultorio.site'}/${form.slug}`}
+                </a>
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="flex-shrink-0 px-3 py-1.5 bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-semibold transition-colors"
+                >
+                  {copied ? '✓ Copiado' : 'Copiar'}
+                </button>
+              </div>
+
+              {/* Botones de compartir */}
+              <div className="mt-3 pt-3 border-t border-blue-100 dark:border-blue-800">
+                <p className="text-xs text-blue-400 mb-2">Compartir en:</p>
+                <div className="flex gap-2">
+                  {/* Facebook */}
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://sara.consultorio.site'}/${form.slug}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1877F2] hover:bg-[#1664d8] text-white rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Facebook
+                  </a>
+                  {/* LinkedIn */}
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://sara.consultorio.site'}/${form.slug}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A66C2] hover:bg-[#0958a8] text-white rounded-lg text-xs font-semibold transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                    LinkedIn
+                  </a>
+                  {/* Instagram — no tiene web share, se copia el link */}
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#bc1888] hover:opacity-90 text-white rounded-lg text-xs font-semibold transition-opacity"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                    </svg>
+                    Instagram
+                  </button>
+                </div>
+                <p className="text-gray-400 text-xs mt-2">* Instagram copia el link al portapapeles para que lo pegues en tu bio o stories.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3">
