@@ -70,7 +70,7 @@ export default function ProfilePage() {
     try {
       const supabase = createClient()
       const ext = file.name.split('.').pop()
-      const path = `avatars/${profile.id}.${ext}`
+      const path = `${profile.id}.${ext}`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -81,8 +81,10 @@ export default function ProfilePage() {
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${data.publicUrl}?t=${Date.now()}`
       setAvatarUrl(url)
-    } catch (err) {
-      setError('Error al subir la imagen. Asegúrate de que el bucket "avatars" existe en Supabase Storage.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : JSON.stringify(err)
+      console.error('Avatar upload error:', msg)
+      setError(`Error al subir la imagen: ${msg}`)
     } finally {
       setUploading(false)
     }
