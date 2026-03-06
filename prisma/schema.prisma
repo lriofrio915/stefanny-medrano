@@ -72,8 +72,9 @@ model Doctor {
   bio       String?
   address   String?
   whatsapp  String?
-  schedules String?
+  schedules String?  // legacy free-text (kept for backwards compat)
   services  String?
+  appointmentDuration Int @default(30) // minutes per slot
 
   // Supabase auth user ID
   authId String? @unique
@@ -82,17 +83,37 @@ model Doctor {
   updatedAt DateTime @updatedAt
 
   // Relations
-  patients            Patient[]
-  appointments        Appointment[]
-  medicalRecords      MedicalRecord[]
-  prescriptions       Prescription[]
-  saraConversations   SaraConversation[]
-  reminders           Reminder[]
-  socialPosts         SocialPost[]
-  knowledgeDocuments  KnowledgeDocument[]
+  patients               Patient[]
+  appointments           Appointment[]
+  medicalRecords         MedicalRecord[]
+  prescriptions          Prescription[]
+  saraConversations      SaraConversation[]
+  reminders              Reminder[]
+  socialPosts            SocialPost[]
+  knowledgeDocuments     KnowledgeDocument[]
+  availabilitySchedules  AvailabilitySchedule[]
 
   @@index([slug])
   @@index([email])
+}
+
+// ─── Availability Schedule ───────────────────────────────────
+
+model AvailabilitySchedule {
+  id        String  @id @default(cuid())
+  doctorId  String
+  weekday   Int     // 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
+  startTime String  // "09:00"
+  endTime   String  // "17:00"
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, weekday])
+  @@index([doctorId])
 }
 
 // ─── Patient ────────────────────────────────────────────────

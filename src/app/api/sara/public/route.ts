@@ -36,9 +36,16 @@ const PUBLIC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'get_availability',
-      description: 'Consulta los horarios de atención y disponibilidad del médico.',
-      parameters: { type: 'object', properties: {}, required: [] },
+      name: 'check_available_slots',
+      description:
+        'Consulta los horarios DISPONIBLES del médico para una fecha específica. DEBES llamar esta herramienta SIEMPRE antes de agendar una cita para confirmar disponibilidad real.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Fecha en formato YYYY-MM-DD' },
+        },
+        required: ['date'],
+      },
     },
   },
   {
@@ -65,14 +72,13 @@ const PUBLIC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     function: {
       name: 'schedule_appointment',
       description:
-        'Agenda una cita para el paciente. Requiere tener el patientId de un registro previo o usar patientName.',
+        'Agenda una cita para el paciente. SOLO usar después de confirmar disponibilidad con check_available_slots.',
       parameters: {
         type: 'object',
         properties: {
           patientId: { type: 'string', description: 'ID del paciente (si ya está registrado)' },
           patientName: { type: 'string', description: 'Nombre del paciente para búsqueda' },
-          date: { type: 'string', description: 'Fecha y hora en formato ISO 8601 (YYYY-MM-DDTHH:mm)' },
-          duration: { type: 'number', description: 'Duración en minutos (por defecto 30)' },
+          date: { type: 'string', description: 'Fecha y hora exacta del slot disponible en formato ISO 8601 (YYYY-MM-DDTHH:mm)' },
           type: {
             type: 'string',
             enum: ['IN_PERSON', 'TELECONSULT', 'HOME_VISIT'],
@@ -122,15 +128,7 @@ function executePublicTool(
         },
       })
 
-    case 'get_availability':
-      return Promise.resolve({
-        success: true,
-        data: {
-          schedules: doctor.schedules ?? 'Horarios no configurados. Por favor comuníquese con el consultorio para más información.',
-          message: 'Para agendar una cita, proporciona tu nombre, teléfono y el horario de tu preferencia.',
-        },
-      })
-
+    case 'check_available_slots':
     case 'register_patient':
     case 'schedule_appointment':
       return executeTool(toolName, args, doctorId)
@@ -149,38 +147,36 @@ function buildPublicSystemPrompt(doctor: DoctorData): string {
     timeStyle: 'short',
   })
 
-  return `Eres Sara, la asistente virtual del consultorio de ${doctor.name}, especialista en ${doctor.specialty}.
+  return `Eres la asistente virtual de recepción del consultorio de ${doctor.name}, especialista en ${doctor.specialty}.
 
-Fecha y hora actual: ${now}
+Fecha y hora actual (Ecuador): ${now}
 
-## Tu rol:
-Eres la asistente de recepción digital del consultorio. Tu objetivo es ayudar a los pacientes a:
-1. Conocer información del consultorio (horarios, dirección, servicios)
-2. Registrarse como pacientes
-3. Agendar una cita médica
+## Tu único objetivo:
+Ayudar al paciente a agendar una cita médica de forma rápida y efectiva.
 
-## Reglas ESTRICTAS:
-- SOLO puedes usar las herramientas disponibles: get_doctor_info, get_availability, register_patient, schedule_appointment
-- NO tienes acceso a historiales médicos, recetas ni información privada de otros pacientes
-- NO des consejos médicos ni diagnósticos
-- Si alguien pregunta por información médica, dile que debe consultar directamente con ${doctor.name.split(' ')[0]}
-- Para emergencias médicas, indica siempre llamar al 911
+## Herramientas disponibles:
+- get_doctor_info: información del consultorio
+- check_available_slots: horarios disponibles para una fecha (SIEMPRE úsalo antes de agendar)
+- register_patient: registrar al paciente
+- schedule_appointment: crear la cita (SOLO con un slot confirmado como disponible)
 
-## Flujo para agendar una cita:
-1. Pregunta el nombre completo del paciente
-2. Pregunta teléfono de contacto y motivo de consulta
+## Flujo OBLIGATORIO para agendar una cita:
+1. Saluda brevemente y pregunta nombre completo y teléfono
+2. Pregunta motivo de consulta
 3. Registra al paciente con register_patient
-4. Pregunta qué fecha y hora prefiere
-5. Confirma la disponibilidad con get_availability si es necesario
-6. Agenda la cita con schedule_appointment
+4. Pregunta qué fecha prefiere
+5. Llama check_available_slots(date) para esa fecha → muestra los horarios libres al paciente
+6. El paciente elige un horario → confirma y llama schedule_appointment con el slot exacto
+7. Confirma la cita con los detalles (fecha, hora, dirección)
 
-## Personalidad:
-- Amable, profesional y eficiente
-- Responde siempre en español
-- Usa un tono cálido y accesible
-- Sé concisa — los pacientes prefieren respuestas cortas y claras
+## Reglas CRÍTICAS:
+- NUNCA inventes ni supongas horarios disponibles — SIEMPRE llama check_available_slots primero
+- Si el día no tiene disponibilidad, ofrece otra fecha
+- NUNCA des consejos médicos ni diagnósticos
+- Para emergencias indica siempre llamar al 911
+- Responde siempre en español, de forma breve y cordial
 
-Recuerda: estás representando al consultorio de ${doctor.name}.`
+Representas al consultorio de ${doctor.name}. Sé profesional, cálida y eficiente.`
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
@@ -238,9 +234,9 @@ export async function POST(req: NextRequest) {
         })),
     ]
 
-    // Agentic loop (max 4 iterations)
+    // Agentic loop (max 6 iterations — check_slots + register + schedule + confirm)
     let finalContent = ''
-    const MAX_ITER = 4
+    const MAX_ITER = 6
 
     for (let i = 0; i < MAX_ITER; i++) {
       const response = await client.chat.completions.create({

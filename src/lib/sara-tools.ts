@@ -98,7 +98,113 @@ async function searchPatients(args: Record<string, unknown>, doctorId: string): 
   }
 }
 
-// ─── 3. schedule_appointment ─────────────────────────────────────────────────
+// ─── 3. check_available_slots ────────────────────────────────────────────────
+
+async function checkAvailableSlots(args: Record<string, unknown>, doctorId: string): Promise<ToolResult> {
+  try {
+    const dateParam = args.date as string
+    if (!dateParam) return { success: false, error: 'La fecha es requerida (YYYY-MM-DD)' }
+
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: doctorId },
+      select: {
+        appointmentDuration: true,
+        availabilitySchedules: true,
+      },
+    })
+
+    if (!doctor) return { success: false, error: 'Médico no encontrado' }
+
+    const [year, month, day] = dateParam.split('-').map(Number)
+    const requestedDate = new Date(year, month - 1, day)
+    const weekday = requestedDate.getDay()
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (requestedDate < today) {
+      return { success: false, error: 'No se pueden agendar citas en fechas pasadas' }
+    }
+
+    const schedule = doctor.availabilitySchedules.find(
+      (s) => s.weekday === weekday && s.isActive
+    )
+
+    if (!schedule) {
+      const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+      return {
+        success: true,
+        data: {
+          available: false,
+          message: `El médico no tiene atención disponible los ${DAYS[weekday]}s. Por favor elige otro día.`,
+          slots: [],
+        },
+      }
+    }
+
+    const duration = doctor.appointmentDuration
+    const allSlots = generateTimeSlots(schedule.startTime, schedule.endTime, duration)
+
+    const startOfDay = new Date(Date.UTC(year, month - 1, day, 5, 0, 0))
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+
+    const booked = await prisma.appointment.findMany({
+      where: {
+        doctorId,
+        date: { gte: startOfDay, lt: endOfDay },
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      },
+      select: { date: true },
+    })
+
+    const bookedTimes = new Set(
+      booked.map((a) => {
+        const d = new Date(a.date.getTime() - 5 * 60 * 60 * 1000)
+        return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+      })
+    )
+
+    const availableSlots = allSlots.filter((slot) => !bookedTimes.has(slot))
+
+    if (availableSlots.length === 0) {
+      return {
+        success: true,
+        data: {
+          available: false,
+          message: `No hay horarios disponibles para el ${dateParam}. El médico está completamente ocupado ese día.`,
+          slots: [],
+        },
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        available: true,
+        date: dateParam,
+        duration,
+        slots: availableSlots,
+        message: `Hay ${availableSlots.length} horarios disponibles el ${dateParam}: ${availableSlots.slice(0, 8).join(', ')}${availableSlots.length > 8 ? '...' : ''}`,
+      },
+    }
+  } catch (error) {
+    console.error('check_available_slots error:', error)
+    return { success: false, error: 'Error al consultar disponibilidad' }
+  }
+}
+
+function generateTimeSlots(startTime: string, endTime: string, duration: number): string[] {
+  const [sh, sm] = startTime.split(':').map(Number)
+  const [eh, em] = endTime.split(':').map(Number)
+  const startTotal = sh * 60 + sm
+  const endTotal = eh * 60 + em
+  const slots: string[] = []
+  for (let t = startTotal; t + duration <= endTotal; t += duration) {
+    slots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`)
+  }
+  return slots
+}
+
+// ─── 4. schedule_appointment ─────────────────────────────────────────────────
 
 async function scheduleAppointment(args: Record<string, unknown>, doctorId: string): Promise<ToolResult> {
   try {
@@ -127,12 +233,40 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
 
     if (!patientId) return { success: false, error: 'Se requiere el ID o nombre del paciente' }
 
+    // Validate slot availability before booking
+    const appointmentDate = new Date(date)
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: doctorId },
+      select: { appointmentDuration: true },
+    })
+    const duration = (args.duration as number) || doctor?.appointmentDuration || 30
+
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        doctorId,
+        date: appointmentDate,
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      },
+    })
+
+    if (conflict) {
+      const timeStr = appointmentDate.toLocaleTimeString('es-EC', {
+        timeZone: 'America/Guayaquil',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      return {
+        success: false,
+        error: `El horario de las ${timeStr} ya está ocupado. Usa check_available_slots para ver los horarios libres.`,
+      }
+    }
+
     const appointment = await prisma.appointment.create({
       data: {
         doctorId,
         patientId,
-        date: new Date(date),
-        duration: (args.duration as number) || 30,
+        date: appointmentDate,
+        duration,
         type: (args.type as 'IN_PERSON' | 'TELECONSULT' | 'HOME_VISIT' | 'EMERGENCY' | 'FOLLOW_UP') || 'IN_PERSON',
         reason: (args.reason as string) || null,
         notes: (args.notes as string) || null,
@@ -150,7 +284,7 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
     return {
       success: true,
       data: {
-        message: `Cita agendada para ${appointment.patient.name} el ${dateStr}`,
+        message: `✅ Cita confirmada para ${appointment.patient.name} el ${dateStr}`,
         appointment: {
           id: appointment.id,
           patientName: appointment.patient.name,
@@ -167,7 +301,7 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
   }
 }
 
-// ─── 4. get_appointments_today ────────────────────────────────────────────────
+// ─── 5. get_appointments_today ────────────────────────────────────────────────
 
 async function getAppointmentsToday(args: Record<string, unknown>, doctorId: string): Promise<ToolResult> {
   try {
@@ -458,6 +592,7 @@ async function searchKnowledge(args: Record<string, unknown>, doctorId: string):
 const TOOL_MAP: Record<string, (args: Record<string, unknown>, doctorId: string) => Promise<ToolResult>> = {
   register_patient: registerPatient,
   search_patients: searchPatients,
+  check_available_slots: checkAvailableSlots,
   schedule_appointment: scheduleAppointment,
   get_appointments_today: getAppointmentsToday,
   get_patient_record: getPatientRecord,

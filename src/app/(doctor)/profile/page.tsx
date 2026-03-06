@@ -1,6 +1,5 @@
 'use client'
 
-import type { Metadata } from 'next'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -20,6 +19,23 @@ interface DoctorProfile {
   schedules: string | null
 }
 
+interface DaySchedule {
+  weekday: number
+  startTime: string
+  endTime: string
+  isActive: boolean
+}
+
+const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const DURATION_OPTIONS = [15, 20, 30, 45, 60]
+
+const DEFAULT_SCHEDULE: DaySchedule[] = DAYS.map((_, weekday) => ({
+  weekday,
+  startTime: '09:00',
+  endTime: '17:00',
+  isActive: weekday >= 1 && weekday <= 5, // Mon–Fri active by default
+}))
+
 export default function ProfilePage() {
   const [profile, setProfile] = useState<DoctorProfile | null>(null)
   const [form, setForm] = useState({
@@ -29,16 +45,21 @@ export default function ProfilePage() {
     bio: '',
     address: '',
     whatsapp: '',
-    schedules: '',
     slug: '',
   })
   const [copied, setCopied] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savingAvail, setSavingAvail] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [availSuccess, setAvailSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Availability state
+  const [appointmentDuration, setAppointmentDuration] = useState(30)
+  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>(DEFAULT_SCHEDULE)
 
   useEffect(() => {
     fetch('/api/profile')
@@ -53,11 +74,26 @@ export default function ProfilePage() {
           bio: data.bio ?? '',
           address: data.address ?? '',
           whatsapp: data.whatsapp ?? '',
-          schedules: data.schedules ?? '',
           slug: data.slug ?? '',
         })
       })
       .catch(() => setError('Error cargando perfil'))
+
+    fetch('/api/availability')
+      .then((r) => r.json())
+      .then((data: { appointmentDuration: number; schedules: DaySchedule[] }) => {
+        if (data.appointmentDuration) setAppointmentDuration(data.appointmentDuration)
+        if (data.schedules && data.schedules.length > 0) {
+          // Merge fetched schedules into the full 7-day array
+          setWeekSchedule(
+            DEFAULT_SCHEDULE.map((def) => {
+              const found = data.schedules.find((s) => s.weekday === def.weekday)
+              return found ?? def
+            })
+          )
+        }
+      })
+      .catch(() => {/* availability not critical */})
   }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -66,6 +102,18 @@ export default function ProfilePage() {
       ? value.toLowerCase().replace(/[^a-z0-9-]/g, '')
       : value
     setForm((prev) => ({ ...prev, [name]: sanitized }))
+  }
+
+  function handleDayToggle(weekday: number) {
+    setWeekSchedule((prev) =>
+      prev.map((d) => (d.weekday === weekday ? { ...d, isActive: !d.isActive } : d))
+    )
+  }
+
+  function handleDayTime(weekday: number, field: 'startTime' | 'endTime', value: string) {
+    setWeekSchedule((prev) =>
+      prev.map((d) => (d.weekday === weekday ? { ...d, [field]: value } : d))
+    )
   }
 
   async function copyLink() {
@@ -98,7 +146,6 @@ export default function ProfilePage() {
       setAvatarUrl(url)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : JSON.stringify(err)
-      console.error('Avatar upload error:', msg)
       setError(`Error al subir la imagen: ${msg}`)
     } finally {
       setUploading(false)
@@ -135,6 +182,32 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleSaveAvailability() {
+    setSavingAvail(true)
+    setError(null)
+    setAvailSuccess(false)
+
+    try {
+      const res = await fetch('/api/availability', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentDuration, schedules: weekSchedule }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Error al guardar horarios')
+      }
+
+      setAvailSuccess(true)
+      setTimeout(() => setAvailSuccess(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar horarios')
+    } finally {
+      setSavingAvail(false)
+    }
+  }
+
   if (!profile) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
@@ -146,7 +219,7 @@ export default function ProfilePage() {
   const initials = getInitials(form.name || profile.name)
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-6 md:p-8 max-w-3xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mi Perfil</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Actualiza tu información profesional</p>
@@ -308,11 +381,6 @@ export default function ProfilePage() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Horarios y ubicación */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 space-y-5">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Horarios y ubicación</h2>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -327,30 +395,15 @@ export default function ProfilePage() {
               className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Horarios de atención
-            </label>
-            <textarea
-              name="schedules"
-              value={form.schedules}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Lunes a Viernes: 8:00 - 17:00&#10;Sábados: 8:00 - 12:00&#10;Domingos: cerrado"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition resize-none"
-            />
-          </div>
         </div>
 
         {/* Página pública */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 space-y-5">
           <div>
             <h2 className="font-semibold text-gray-900 dark:text-white">Tu página pública</h2>
-            <p className="text-gray-400 text-xs mt-0.5">Comparte este link con tus pacientes para que puedan agendar citas y chatear con Sara.</p>
+            <p className="text-gray-400 text-xs mt-0.5">Comparte este link con tus pacientes para que puedan agendar citas.</p>
           </div>
 
-          {/* Slug editor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Nombre de tu página
@@ -371,7 +424,6 @@ export default function ProfilePage() {
             <p className="text-gray-400 text-xs mt-1">Solo letras minúsculas, números y guiones. Mín. 3 caracteres.</p>
           </div>
 
-          {/* Link público + copiar */}
           {form.slug && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4">
               <p className="text-xs text-blue-500 font-semibold mb-2 uppercase tracking-wide">Tu link público</p>
@@ -393,11 +445,9 @@ export default function ProfilePage() {
                 </button>
               </div>
 
-              {/* Botones de compartir */}
               <div className="mt-3 pt-3 border-t border-blue-100 dark:border-blue-800">
                 <p className="text-xs text-blue-400 mb-2">Compartir en:</p>
                 <div className="flex gap-2">
-                  {/* Facebook */}
                   <a
                     href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://consultorio.site'}/${form.slug}`)}`}
                     target="_blank"
@@ -409,7 +459,6 @@ export default function ProfilePage() {
                     </svg>
                     Facebook
                   </a>
-                  {/* LinkedIn */}
                   <a
                     href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://consultorio.site'}/${form.slug}`)}`}
                     target="_blank"
@@ -421,7 +470,6 @@ export default function ProfilePage() {
                     </svg>
                     LinkedIn
                   </a>
-                  {/* Instagram — no tiene web share, se copia el link */}
                   <button
                     type="button"
                     onClick={copyLink}
@@ -433,7 +481,7 @@ export default function ProfilePage() {
                     Instagram
                   </button>
                 </div>
-                <p className="text-gray-400 text-xs mt-2">* Instagram copia el link al portapapeles para que lo pegues en tu bio o stories.</p>
+                <p className="text-gray-400 text-xs mt-2">* Instagram copia el link al portapapeles.</p>
               </div>
             </div>
           )}
@@ -449,6 +497,113 @@ export default function ProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* ── HORARIO DE ATENCIÓN ─────────────────────────────── */}
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 space-y-5">
+        <div>
+          <h2 className="font-semibold text-gray-900 dark:text-white">Horario de atención</h2>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Sara usará este horario para verificar disponibilidad real y agendar citas automáticamente.
+          </p>
+        </div>
+
+        {availSuccess && (
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl text-sm flex items-center gap-2">
+            <span>✓</span> Horarios guardados correctamente
+          </div>
+        )}
+
+        {/* Duración de cita */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Duración por cita
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {DURATION_OPTIONS.map((min) => (
+              <button
+                key={min}
+                type="button"
+                onClick={() => setAppointmentDuration(min)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                  appointmentDuration === min
+                    ? 'bg-primary text-white border-primary'
+                    : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-primary hover:text-primary'
+                }`}
+              >
+                {min} min
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Días de la semana */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Días y horarios</p>
+          {weekSchedule.map((day) => (
+            <div key={day.weekday} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+              day.isActive
+                ? 'border-primary/30 bg-primary/5 dark:bg-primary/10'
+                : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30'
+            }`}>
+              {/* Toggle */}
+              <button
+                type="button"
+                onClick={() => handleDayToggle(day.weekday)}
+                className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                  day.isActive ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  day.isActive ? 'translate-x-4' : 'translate-x-0'
+                }`} />
+              </button>
+
+              {/* Day name */}
+              <span className={`w-24 text-sm font-medium ${
+                day.isActive ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
+              }`}>
+                {DAYS[day.weekday]}
+              </span>
+
+              {/* Time inputs */}
+              {day.isActive ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="time"
+                    value={day.startTime}
+                    onChange={(e) => handleDayTime(day.weekday, 'startTime', e.target.value)}
+                    className="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <span className="text-gray-400 text-sm">–</span>
+                  <input
+                    type="time"
+                    value={day.endTime}
+                    onChange={(e) => handleDayTime(day.weekday, 'endTime', e.target.value)}
+                    className="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <span className="text-xs text-gray-400 hidden sm:block">
+                    ({Math.floor((
+                      (parseInt(day.endTime.split(':')[0]) * 60 + parseInt(day.endTime.split(':')[1])) -
+                      (parseInt(day.startTime.split(':')[0]) * 60 + parseInt(day.startTime.split(':')[1]))
+                    ) / appointmentDuration)} slots)
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400 dark:text-gray-500">Cerrado</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSaveAvailability}
+          disabled={savingAvail}
+          className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        >
+          {savingAvail ? 'Guardando...' : 'Guardar horarios'}
+        </button>
+      </div>
     </div>
   )
 }
