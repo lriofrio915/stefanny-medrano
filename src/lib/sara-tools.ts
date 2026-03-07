@@ -105,13 +105,21 @@ async function checkAvailableSlots(args: Record<string, unknown>, doctorId: stri
     const dateParam = args.date as string
     if (!dateParam) return { success: false, error: 'La fecha es requerida (YYYY-MM-DD)' }
 
-    const doctor = await prisma.doctor.findUnique({
-      where: { id: doctorId },
-      select: {
-        appointmentDuration: true,
-        availabilitySchedules: true,
-      },
-    })
+    let doctor: { appointmentDuration: number; availabilitySchedules: { weekday: number; startTime: string; endTime: string; isActive: boolean }[] } | null = null
+    try {
+      doctor = await prisma.doctor.findUnique({
+        where: { id: doctorId },
+        select: {
+          appointmentDuration: true,
+          availabilitySchedules: true,
+        },
+      })
+    } catch {
+      return {
+        success: false,
+        error: 'El sistema de disponibilidad aún no está configurado. El médico debe guardar su horario en Mi Perfil primero.',
+      }
+    }
 
     if (!doctor) return { success: false, error: 'Médico no encontrado' }
 
@@ -235,11 +243,15 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
 
     // Validate slot availability before booking
     const appointmentDate = new Date(date)
-    const doctor = await prisma.doctor.findUnique({
-      where: { id: doctorId },
-      select: { appointmentDuration: true },
-    })
-    const duration = (args.duration as number) || doctor?.appointmentDuration || 30
+    let apptDuration = 30
+    try {
+      const doc = await prisma.doctor.findUnique({
+        where: { id: doctorId },
+        select: { appointmentDuration: true },
+      })
+      apptDuration = doc?.appointmentDuration ?? 30
+    } catch { /* column may not exist yet, use default */ }
+    const duration = (args.duration as number) || apptDuration
 
     const conflict = await prisma.appointment.findFirst({
       where: {

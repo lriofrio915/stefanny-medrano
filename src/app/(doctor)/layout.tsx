@@ -14,6 +14,7 @@ export default async function DoctorLayout({ children }: { children: React.React
 
     const doctor = await prisma.doctor.findFirst({
       where: { OR: [{ id: user.id }, { email: user.email! }] },
+      select: { id: true, name: true, specialty: true, avatarUrl: true },
     })
     if (!doctor) redirect('/login')
 

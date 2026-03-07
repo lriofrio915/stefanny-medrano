@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-export const dynamic = 'force-dynamic'
-
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -126,7 +124,10 @@ export default function SaraPage() {
           body: JSON.stringify({ messages: history }),
         })
 
-        if (!res.ok || !res.body) throw new Error(`Error ${res.status}`)
+        if (!res.ok || !res.body) {
+          const errBody = await res.json().catch(() => ({}))
+          throw new Error(errBody.error ?? `Error ${res.status}`)
+        }
 
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
@@ -187,13 +188,13 @@ export default function SaraPage() {
         console.error('Sara chat error:', err)
         setStreamingContent('')
         setToolStatuses([])
+        const errMsg = err instanceof Error ? err.message : 'Error desconocido'
         setMessages((prev) => [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content:
-              'Lo siento, tuve un problema procesando tu solicitud. Por favor intenta de nuevo.',
+            content: `Lo siento, ocurrió un error: **${errMsg}**\n\nSi el problema persiste, verifica que las variables de entorno (OPENROUTER_API_KEY) estén configuradas en Vercel.`,
             timestamp: new Date(),
           },
         ])
@@ -213,9 +214,9 @@ export default function SaraPage() {
   const isThinking = loading && toolStatuses.length === 0 && !streamingContent
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-full min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-lg shadow-md">
             S
@@ -237,7 +238,7 @@ export default function SaraPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 dark:text-gray-100">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -356,7 +357,7 @@ export default function SaraPage() {
       )}
 
       {/* Input */}
-      <div className="bg-white border-t border-gray-100 p-4">
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 p-4">
         <form
           onSubmit={(e) => {
             e.preventDefault()
