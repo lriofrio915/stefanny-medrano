@@ -84,6 +84,7 @@ export default async function DoctorPublicPage({ params }: Props) {
 
   // Avatar reutilizable
   const AvatarLg = () => doctor.avatarUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img src={doctor.avatarUrl} alt={doctor.name}
       className="w-full h-full object-cover" />
   ) : (
@@ -94,6 +95,7 @@ export default async function DoctorPublicPage({ params }: Props) {
   )
 
   const AvatarSm = () => doctor.avatarUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img src={doctor.avatarUrl} alt={doctor.name}
       className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
   ) : (
@@ -264,6 +266,7 @@ export default async function DoctorPublicPage({ params }: Props) {
             {/* Foto del doctor — lado izquierdo */}
             <div className="w-full md:w-64 h-56 md:h-auto flex-shrink-0 relative overflow-hidden">
               {doctor.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={doctor.avatarUrl} alt={doctor.name}
                   className="w-full h-full object-cover object-top md:absolute md:inset-0" />
               ) : (
