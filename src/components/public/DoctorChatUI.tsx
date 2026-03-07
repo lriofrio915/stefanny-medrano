@@ -130,6 +130,7 @@ export default function DoctorChatUI({ doctor }: { doctor: DoctorInfo }) {
         </a>
 
         {doctor.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={doctor.avatarUrl}
             alt={doctor.name}
