@@ -17,15 +17,15 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient()
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
       if (authError) {
         setError('Correo o contraseña incorrectos. Verifica tus datos e intenta de nuevo.')
         return
       }
 
-      // Forzar recarga completa para que el middleware lea las cookies de sesión
-      window.location.href = '/dashboard'
+      const isPatient = data.user?.user_metadata?.role === 'patient'
+      window.location.href = isPatient ? '/mi-salud' : '/dashboard'
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error inesperado'
       setError(`No se pudo conectar con el servidor de autenticación. ${msg}`)

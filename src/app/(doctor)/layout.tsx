@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import DoctorSidebar from '@/components/DoctorSidebar'
+import SaraFAB from '@/components/SaraFAB'
 import { getInitials, detectDoctorTitle } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -36,6 +37,7 @@ export default async function DoctorLayout({ children }: { children: React.React
         <main className="flex-1 overflow-auto pt-14 pb-20 md:pt-0 md:pb-0">
           {children}
         </main>
+        <SaraFAB />
       </div>
     )
   } catch (error) {
