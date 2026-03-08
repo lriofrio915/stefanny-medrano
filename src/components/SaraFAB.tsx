@@ -12,7 +12,7 @@ export default function SaraFAB() {
     <Link
       href="/sara"
       aria-label="Hablar con Sara IA"
-      className="fixed bottom-24 left-5 md:bottom-8 md:left-72 z-50 group"
+      className="fixed bottom-24 right-5 md:bottom-8 md:right-6 z-50 group"
     >
       <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary shadow-lg shadow-primary/40 hover:shadow-xl hover:shadow-primary/50 hover:-translate-y-1 transition-all duration-200">
         {/* Pulse ring */}
@@ -27,7 +27,7 @@ export default function SaraFAB() {
             stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
         </svg>
         {/* Tooltip */}
-        <span className="absolute left-16 bg-gray-900 dark:bg-gray-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+        <span className="absolute right-16 bg-gray-900 dark:bg-gray-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
           Hablar con Sara IA
         </span>
       </div>
