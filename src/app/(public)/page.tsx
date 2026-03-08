@@ -565,7 +565,6 @@ const plans = [
       'Todo lo del plan Pro',
       'Multi-sede y multi-médico',
       'Tu propia marca y dominio personalizado',
-      'Integraciones con tus sistemas existentes',
       'Configuración asistida con acompañamiento personalizado',
       'Plataforma 24/7 y soporte prioritario en menos de 2 horas',
     ],
