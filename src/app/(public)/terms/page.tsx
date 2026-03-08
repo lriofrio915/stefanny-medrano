@@ -150,8 +150,8 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Contacto</h2>
             <p>
               Para consultas sobre estos términos:{' '}
-              <a href="mailto:legal@doctoramedranointernista.com" className="text-primary hover:underline">
-                legal@doctoramedranointernista.com
+              <a href="mailto:soporte@consultorio.site" className="text-primary hover:underline">
+                soporte@consultorio.site
               </a>
             </p>
           </section>

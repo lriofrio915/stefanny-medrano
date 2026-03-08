@@ -101,8 +101,8 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-3">
               Para ejercer estos derechos, contáctenos en{' '}
-              <a href="mailto:privacidad@doctoramedranointernista.com" className="text-primary hover:underline">
-                privacidad@doctoramedranointernista.com
+              <a href="mailto:soporte@consultorio.site" className="text-primary hover:underline">
+                soporte@consultorio.site
               </a>
             </p>
           </section>
@@ -128,8 +128,8 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Contacto</h2>
             <p>
               Para consultas sobre privacidad:{' '}
-              <a href="mailto:privacidad@doctoramedranointernista.com" className="text-primary hover:underline">
-                privacidad@doctoramedranointernista.com
+              <a href="mailto:soporte@consultorio.site" className="text-primary hover:underline">
+                soporte@consultorio.site
               </a>
             </p>
           </section>

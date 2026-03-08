@@ -661,7 +661,7 @@ function Pricing() {
 
         <p className="text-center text-gray-400 text-sm mt-10">
           ¿Tienes preguntas?{' '}
-          <a href="mailto:hola@saramedica.com" className="text-primary hover:underline">
+          <a href="mailto:soporte@consultorio.site" className="text-primary hover:underline">
             Escríbenos
           </a>{' '}
           y te respondemos en menos de 24 horas.
@@ -743,7 +743,7 @@ function Footer() {
         <div className="flex items-center gap-6 text-sm text-white/40">
           <a href="/terms" className="hover:text-white/70 transition-colors">Términos</a>
           <a href="/privacy" className="hover:text-white/70 transition-colors">Privacidad</a>
-          <a href="mailto:hola@saramedica.com" className="hover:text-white/70 transition-colors">Contacto</a>
+          <a href="mailto:soporte@consultorio.site" className="hover:text-white/70 transition-colors">Contacto</a>
         </div>
       </div>
     </footer>
