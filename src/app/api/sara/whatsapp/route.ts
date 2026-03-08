@@ -151,7 +151,7 @@ async function startDoctorConversation(
       doctorId: doctor.id,
       context: 'whatsapp',
       title: convTitle,
-      messages: history.slice(-MAX_HISTORY),
+      messages: history.slice(-MAX_HISTORY) as unknown as never,
     },
   })
 
@@ -178,7 +178,7 @@ async function handleOngoingConversation(
 
   await prisma.saraConversation.update({
     where: { id: conv.id },
-    data: { messages: history.slice(-MAX_HISTORY) },
+    data: { messages: history.slice(-MAX_HISTORY) as unknown as never },
   })
 
   if (appointmentBooked && doctor.whatsapp) {
@@ -256,7 +256,7 @@ export async function POST(req: Request) {
           doctorId: allDoctors[0].id, // placeholder — not a real doctor assignment
           context: 'wa_select',
           title: convTitle,
-          messages: [{ role: 'assistant', content: welcomeMsg }],
+          messages: [{ role: 'assistant', content: welcomeMsg }] as unknown as never,
         },
       })
       return NextResponse.json({ reply: toWhatsApp(welcomeMsg) })
@@ -276,7 +276,7 @@ export async function POST(req: Request) {
             ...(selectConv.messages as unknown as SaraMessage[]),
             { role: 'user', content: message },
             { role: 'assistant', content: retry },
-          ],
+          ] as unknown as never,
         },
       })
       return NextResponse.json({ reply: toWhatsApp(retry) })
