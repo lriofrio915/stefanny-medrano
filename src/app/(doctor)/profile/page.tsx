@@ -56,6 +56,9 @@ export default function ProfilePage() {
   const [availSuccess, setAvailSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [showDeleteZone, setShowDeleteZone] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   // Availability state
   const [appointmentDuration, setAppointmentDuration] = useState(30)
@@ -610,6 +613,66 @@ export default function ProfilePage() {
         >
           {savingAvail ? 'Guardando...' : 'Guardar horarios'}
         </button>
+      </div>
+
+      {/* ── ZONA DE PELIGRO ─────────────────────────────── */}
+      <div className="mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-red-100 dark:border-red-900/40 p-6">
+        <button
+          type="button"
+          onClick={() => setShowDeleteZone((v) => !v)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <div>
+            <h2 className="font-semibold text-red-600 dark:text-red-400">Zona de peligro</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Acciones irreversibles sobre tu cuenta</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round"
+            className={`text-gray-400 transition-transform ${showDeleteZone ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+
+        {showDeleteZone && (
+          <div className="mt-5 space-y-4 pt-4 border-t border-red-100 dark:border-red-900/30">
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
+              <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Eliminar cuenta y todos mis datos</p>
+              <p className="text-xs text-red-600/80 dark:text-red-400/80 leading-relaxed">
+                Esta acción es <strong>permanente e irreversible</strong>. Se eliminarán tu cuenta, todos tus pacientes, citas, recetas, historiales clínicos y cualquier dato asociado.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">
+                Escribe tu correo electrónico para confirmar: <strong>{profile.email}</strong>
+              </label>
+              <input
+                type="email"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={profile.email}
+                className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={deleteConfirm !== profile.email || deleting}
+              onClick={async () => {
+                setDeleting(true)
+                const res = await fetch('/api/profile', { method: 'DELETE' })
+                if (res.ok) {
+                  window.location.href = '/'
+                } else {
+                  const data = await res.json()
+                  setError(data.error ?? 'Error al eliminar cuenta')
+                  setDeleting(false)
+                }
+              }}
+              className="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar mi cuenta permanentemente'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

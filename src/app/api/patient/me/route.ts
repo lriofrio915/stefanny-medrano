@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -44,6 +45,32 @@ export async function PATCH(req: Request) {
     return NextResponse.json(updated)
   } catch (err) {
     console.error('PATCH /api/patient/me:', err)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+
+export async function DELETE() {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const patient = await prisma.patient.findUnique({
+      where: { authId: user.id },
+      select: { id: true },
+    })
+    if (!patient) return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
+
+    // Remove authId so doctor still has the medical record
+    await prisma.patient.update({ where: { id: patient.id }, data: { authId: null } })
+
+    // Delete the Supabase auth account
+    const admin = createAdminClient()
+    await admin.auth.admin.deleteUser(user.id)
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('DELETE /api/patient/me:', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

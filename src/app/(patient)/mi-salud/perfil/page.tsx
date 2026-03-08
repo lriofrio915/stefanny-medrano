@@ -25,6 +25,9 @@ export default function PatientPerfilPage() {
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showDeleteZone, setShowDeleteZone] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetch('/api/patient/me')
@@ -158,6 +161,66 @@ export default function PatientPerfilPage() {
             <p className="text-sm text-gray-400">{profile.doctor.specialty}</p>
           </div>
         </div>
+      </div>
+
+      {/* Danger zone */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-red-100 dark:border-red-900/40 p-5">
+        <button
+          type="button"
+          onClick={() => setShowDeleteZone((v) => !v)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <div>
+            <h2 className="font-semibold text-red-600 dark:text-red-400">Zona de peligro</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Eliminar tu acceso al portal</p>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round"
+            className={`text-gray-400 transition-transform ${showDeleteZone ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+
+        {showDeleteZone && (
+          <div className="mt-4 space-y-4 pt-4 border-t border-red-100 dark:border-red-900/30">
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
+              <p className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Eliminar mi acceso al portal</p>
+              <p className="text-xs text-red-600/80 dark:text-red-400/80 leading-relaxed">
+                Tu cuenta de acceso será eliminada permanentemente. Tu médico conservará tu historial clínico. Esta acción no se puede deshacer.
+              </p>
+            </div>
+            {profile.email && (
+              <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1.5">
+                  Escribe tu correo para confirmar: <strong>{profile.email}</strong>
+                </label>
+                <input
+                  type="email"
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder={profile.email}
+                  className="w-full border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+              </div>
+            )}
+            <button
+              type="button"
+              disabled={deleteConfirm !== (profile.email ?? '') || deleting || !profile.email}
+              onClick={async () => {
+                setDeleting(true)
+                const res = await fetch('/api/patient/me', { method: 'DELETE' })
+                if (res.ok) {
+                  window.location.href = '/login'
+                } else {
+                  setDeleting(false)
+                }
+              }}
+              className="w-full py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar mi acceso permanentemente'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
