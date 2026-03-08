@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import NavHeader from '@/components/landing/NavHeader'
+import BackToTop from '@/components/landing/BackToTop'
 
 export const metadata: Metadata = {
   title: 'Sara — Tu asistente médica con IA',
@@ -766,6 +767,7 @@ export default function LandingPage() {
         <CTAFinal />
       </main>
       <Footer />
+      <BackToTop />
     </>
   )
 }
