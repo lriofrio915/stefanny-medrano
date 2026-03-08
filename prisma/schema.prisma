@@ -51,9 +51,24 @@ enum BloodType {
 
 enum PostStatus {
   DRAFT
+  APPROVED
+  REJECTED
   SCHEDULED
   PUBLISHED
   FAILED
+}
+
+enum ContentType {
+  POST
+  CAROUSEL
+  REEL
+  STORY
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  BOTH
 }
 
 // ─── Doctor ─────────────────────────────────────────────────
@@ -90,6 +105,9 @@ model Doctor {
   socialPosts            SocialPost[]
   knowledgeDocuments     KnowledgeDocument[]
   availabilitySchedules  AvailabilitySchedule[]
+  brandProfile           BrandProfile?
+  brandImages            BrandImage[]
+  contentCalendars       ContentCalendar[]
 
   @@index([slug])
   @@index([email])
@@ -343,23 +361,123 @@ model KnowledgeDocument {
 // ─── Social Post ────────────────────────────────────────────
 
 model SocialPost {
-  id          String     @id @default(cuid())
-  doctorId    String
-  content     String
-  imageUrl    String?
-  platforms   Json
-  publishedAt DateTime?
-  scheduledAt DateTime?
-  status      PostStatus @default(DRAFT)
-  hashtags    String[]
-  externalIds Json?
+  id             String         @id @default(cuid())
+  doctorId       String
+  content        String         @db.Text
+  imageUrl       String?
+  platforms      Json
+  publishedAt    DateTime?
+  scheduledAt    DateTime?
+  approvedAt     DateTime?
+  status         PostStatus     @default(DRAFT)
+  hashtags       String[]
+  externalIds    Json?
+  // Marketing fields
+  contentType    ContentType    @default(POST)
+  targetPlatform SocialPlatform @default(INSTAGRAM)
+  topic          String?
+  carouselSlides Json?
+  reelScript     String?        @db.Text
+  imagePrompt    String?
+  suggestedTime  String?
+  aiGenerated    Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  calendarItems CalendarItem[]
 
   @@index([doctorId])
   @@index([status])
+  @@index([contentType])
   @@index([publishedAt])
+  @@index([doctorId, status])
+}
+
+// ─── Brand Profile ──────────────────────────────────────────
+
+model BrandProfile {
+  id             String   @id @default(cuid())
+  doctorId       String   @unique
+  clinicName     String?
+  specialties    String[]
+  slogan         String?
+  primaryColor   String   @default("#2563EB")
+  secondaryColor String   @default("#0D9488")
+  accentColor    String   @default("#F59E0B")
+  logoUrl        String?
+  logoPath       String?
+  tones          String[]
+  targetAudience String?  @db.Text
+  excludedTopics String?  @db.Text
+  instagramUrl   String?
+  facebookUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  images BrandImage[]
+
+  @@index([doctorId])
+}
+
+// ─── Brand Image ────────────────────────────────────────────
+
+model BrandImage {
+  id             String  @id @default(cuid())
+  doctorId       String
+  brandProfileId String
+  url            String
+  storagePath    String
+  category       String
+  description    String?
+
+  createdAt DateTime @default(now())
+
+  doctor       Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  brandProfile BrandProfile @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+
+  @@index([doctorId])
+  @@index([brandProfileId])
+  @@index([category])
+}
+
+// ─── Content Calendar ───────────────────────────────────────
+
+model ContentCalendar {
+  id        String   @id @default(cuid())
+  doctorId  String
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  frequency String   @default("MONTHLY")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  items  CalendarItem[]
+
+  @@index([doctorId])
+}
+
+// ─── Calendar Item ──────────────────────────────────────────
+
+model CalendarItem {
+  id            String   @id @default(cuid())
+  calendarId    String
+  socialPostId  String
+  scheduledDate DateTime
+  order         Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  calendar   ContentCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  socialPost SocialPost      @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@index([calendarId])
+  @@index([socialPostId])
+  @@index([scheduledDate])
 }
