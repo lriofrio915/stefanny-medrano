@@ -140,7 +140,6 @@ export default function AppointmentsPage() {
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
             <Link href="/appointments/new" className="btn-primary">Nueva cita</Link>
-            <Link href="/sara" className="btn-outline">Pedir a Sara</Link>
           </div>
         </div>
       )}
