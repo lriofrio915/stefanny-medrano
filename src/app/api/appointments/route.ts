@@ -21,10 +21,15 @@ export async function GET(req: NextRequest) {
     if (!doctor) return NextResponse.json({ error: 'Doctor not found' }, { status: 404 })
 
     const filter = req.nextUrl.searchParams.get('filter') ?? 'all'
+    const startDate = req.nextUrl.searchParams.get('startDate')
+    const endDate = req.nextUrl.searchParams.get('endDate')
     const now = new Date()
 
     let dateFilter: { gte?: Date; lt?: Date } = {}
-    if (filter === 'today') {
+
+    if (startDate && endDate) {
+      dateFilter = { gte: new Date(startDate), lt: new Date(endDate) }
+    } else if (filter === 'today') {
       const start = new Date(now); start.setHours(0, 0, 0, 0)
       const end = new Date(now); end.setHours(23, 59, 59, 999)
       dateFilter = { gte: start, lt: end }

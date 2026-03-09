@@ -128,26 +128,23 @@ async function searchPatients(args: Record<string, unknown>, doctorId: string): 
 
 // ─── 3. check_available_slots ────────────────────────────────────────────────
 
+// Default schedule used when doctor hasn't configured availability yet
+const DEFAULT_AVAILABILITY = [1, 2, 3, 4, 5].map((weekday) => ({
+  weekday,
+  startTime: '09:00',
+  endTime: '18:00',
+  isActive: true,
+}))
+
 async function checkAvailableSlots(args: Record<string, unknown>, doctorId: string): Promise<ToolResult> {
   try {
     const dateParam = args.date as string
     if (!dateParam) return { success: false, error: 'La fecha es requerida (YYYY-MM-DD)' }
 
-    let doctor: { appointmentDuration: number; availabilitySchedules: { weekday: number; startTime: string; endTime: string; isActive: boolean }[] } | null = null
-    try {
-      doctor = await prisma.doctor.findUnique({
-        where: { id: doctorId },
-        select: {
-          appointmentDuration: true,
-          availabilitySchedules: true,
-        },
-      })
-    } catch {
-      return {
-        success: false,
-        error: 'El sistema de disponibilidad aún no está configurado. El médico debe guardar su horario en Mi Perfil primero.',
-      }
-    }
+    const doctor = await prisma.doctor.findUnique({
+      where: { id: doctorId },
+      select: { appointmentDuration: true, availabilitySchedules: true },
+    })
 
     if (!doctor) return { success: false, error: 'Médico no encontrado' }
 
@@ -161,9 +158,12 @@ async function checkAvailableSlots(args: Record<string, unknown>, doctorId: stri
       return { success: false, error: 'No se pueden agendar citas en fechas pasadas' }
     }
 
-    const schedule = doctor.availabilitySchedules.find(
-      (s) => s.weekday === weekday && s.isActive
-    )
+    // Use configured schedule or fall back to default (Mon–Fri 9–18)
+    const schedules = doctor.availabilitySchedules.length > 0
+      ? doctor.availabilitySchedules
+      : DEFAULT_AVAILABILITY
+
+    const schedule = schedules.find((s) => s.weekday === weekday && s.isActive)
 
     if (!schedule) {
       const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -171,13 +171,13 @@ async function checkAvailableSlots(args: Record<string, unknown>, doctorId: stri
         success: true,
         data: {
           available: false,
-          message: `El médico no tiene atención disponible los ${DAYS[weekday]}s. Por favor elige otro día.`,
+          message: `El médico no tiene atención disponible los ${DAYS[weekday]}s. Por favor elige otro día (lunes a viernes).`,
           slots: [],
         },
       }
     }
 
-    const duration = doctor.appointmentDuration
+    const duration = doctor.appointmentDuration || 30
     const allSlots = generateTimeSlots(schedule.startTime, schedule.endTime, duration)
 
     const startOfDay = new Date(Date.UTC(year, month - 1, day, 5, 0, 0))
