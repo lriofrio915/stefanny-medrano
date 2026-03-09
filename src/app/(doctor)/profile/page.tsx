@@ -229,7 +229,7 @@ export default function ProfilePage() {
   const initials = getInitials(form.name || profile.name)
 
   return (
-    <div className="p-6 md:p-8 pt-10 md:pt-12 max-w-3xl">
+    <div className="p-6 md:p-8 pt-16 md:pt-16 max-w-3xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Mi Perfil</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">Actualiza tu información profesional</p>
