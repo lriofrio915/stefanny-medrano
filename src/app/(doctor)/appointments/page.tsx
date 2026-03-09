@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type AppointmentStatus = 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
@@ -87,12 +88,16 @@ function buildCalendarGrid(year: number, month: number) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function AppointmentsPage() {
+const VALID_FILTERS = ['today', 'week', 'month', 'all']
+
+function AppointmentsContent() {
+  const searchParams = useSearchParams()
   const [view, setView] = useState<'list' | 'calendar'>('list')
 
   // List view state
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [filter, setFilter] = useState('today')
+  const initialFilter = searchParams.get('filter')
+  const [filter, setFilter] = useState(VALID_FILTERS.includes(initialFilter ?? '') ? initialFilter! : 'today')
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
@@ -423,5 +428,13 @@ export default function AppointmentsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AppointmentsPage() {
+  return (
+    <Suspense>
+      <AppointmentsContent />
+    </Suspense>
   )
 }

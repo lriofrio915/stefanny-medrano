@@ -81,7 +81,8 @@ export default function NewAppointmentPage() {
     setError(null)
 
     try {
-      const dateTime = `${form.date}T${form.time}`
+      // Build ISO datetime with Ecuador timezone offset (UTC-5) so the server stores the correct UTC time
+      const dateTime = `${form.date}T${form.time}:00-05:00`
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,7 +101,20 @@ export default function NewAppointmentPage() {
         throw new Error(body.error ?? 'Error al guardar')
       }
 
-      router.push('/appointments')
+      // Redirect to the filter that will show the newly created appointment
+      const apptDate = new Date(`${form.date}T${form.time}:00-05:00`)
+      const now = new Date()
+      const todayStart = new Date(now.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' }) + 'T00:00:00-05:00')
+      const todayEnd   = new Date(todayStart.getTime() + 86_400_000)
+      const weekEnd    = new Date(todayStart.getTime() + 7 * 86_400_000)
+      const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+      let targetFilter = 'all'
+      if (apptDate >= todayStart && apptDate < todayEnd) targetFilter = 'today'
+      else if (apptDate >= todayEnd && apptDate < weekEnd) targetFilter = 'week'
+      else if (apptDate >= weekEnd && apptDate < monthEnd) targetFilter = 'month'
+
+      router.push(`/appointments?filter=${targetFilter}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar cita')
       setSaving(false)

@@ -23,27 +23,29 @@ export async function GET(req: NextRequest) {
     const filter = req.nextUrl.searchParams.get('filter') ?? 'all'
     const startDate = req.nextUrl.searchParams.get('startDate')
     const endDate = req.nextUrl.searchParams.get('endDate')
-    const now = new Date()
+    // Use Ecuador time (UTC-5) for all date boundaries
+    const EC_OFFSET_MS = 5 * 60 * 60 * 1000
+    const nowUtc = Date.now()
+    const nowEc = new Date(nowUtc - EC_OFFSET_MS) // current moment in EC local time
+
+    // Midnight of today in Ecuador = UTC + 5h
+    const todayEcMidnight = new Date(
+      Date.UTC(nowEc.getUTCFullYear(), nowEc.getUTCMonth(), nowEc.getUTCDate()) + EC_OFFSET_MS
+    )
 
     let dateFilter: { gte?: Date; lt?: Date } = {}
 
     if (startDate && endDate) {
       dateFilter = { gte: new Date(startDate), lt: new Date(endDate) }
     } else if (filter === 'today') {
-      const start = new Date(now); start.setHours(0, 0, 0, 0)
-      const end = new Date(now); end.setHours(23, 59, 59, 999)
-      dateFilter = { gte: start, lt: end }
+      dateFilter = { gte: todayEcMidnight, lt: new Date(todayEcMidnight.getTime() + 86_400_000) }
     } else if (filter === 'week') {
-      const start = new Date(now)
-      start.setDate(now.getDate() - now.getDay())
-      start.setHours(0, 0, 0, 0)
-      const end = new Date(start)
-      end.setDate(start.getDate() + 7)
-      dateFilter = { gte: start, lt: end }
+      const weekStart = new Date(todayEcMidnight.getTime() - nowEc.getUTCDay() * 86_400_000)
+      dateFilter = { gte: weekStart, lt: new Date(weekStart.getTime() + 7 * 86_400_000) }
     } else if (filter === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-      dateFilter = { gte: start, lt: end }
+      const monthStart = new Date(Date.UTC(nowEc.getUTCFullYear(), nowEc.getUTCMonth(), 1) + EC_OFFSET_MS)
+      const monthEnd   = new Date(Date.UTC(nowEc.getUTCFullYear(), nowEc.getUTCMonth() + 1, 1) + EC_OFFSET_MS)
+      dateFilter = { gte: monthStart, lt: monthEnd }
     }
 
     const appointments = await prisma.appointment.findMany({
