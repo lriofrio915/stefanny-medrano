@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 const APPT_TYPES = [
   { value: 'IN_PERSON',   label: 'Presencial',     icon: '🏥' },
@@ -101,8 +102,17 @@ export default function NewAppointmentPage() {
         throw new Error(body.error ?? 'Error al guardar')
       }
 
-      // Redirect to the filter that will show the newly created appointment
+      // Toast de confirmación
       const apptDate = new Date(`${form.date}T${form.time}:00-05:00`)
+      const apptLabel = apptDate.toLocaleDateString('es-EC', {
+        timeZone: 'America/Guayaquil', weekday: 'long', day: 'numeric', month: 'long',
+      })
+      const apptTime = apptDate.toLocaleTimeString('es-EC', {
+        timeZone: 'America/Guayaquil', hour: '2-digit', minute: '2-digit',
+      })
+      toast.success(`Cita agendada: ${apptLabel} a las ${apptTime}`, { duration: 5000 })
+
+      // Redirect to the filter that will show the newly created appointment
       const now = new Date()
       const todayStart = new Date(now.toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' }) + 'T00:00:00-05:00')
       const todayEnd   = new Date(todayStart.getTime() + 86_400_000)
