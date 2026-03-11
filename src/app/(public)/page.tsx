@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import NavHeader from '@/components/landing/NavHeader'
 import BackToTop from '@/components/landing/BackToTop'
+import AuthErrorRedirect from '@/components/AuthErrorRedirect'
 
 export const metadata: Metadata = {
   title: 'Sara — Tu asistente médica con IA',
@@ -846,6 +847,7 @@ function Footer() {
 export default function LandingPage() {
   return (
     <>
+      <AuthErrorRedirect />
       <NavHeader />
       <main>
         <Hero />
