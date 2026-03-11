@@ -1,9 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+// Separated into its own component so it can be wrapped in Suspense
+// (Next.js requires useSearchParams to be inside a Suspense boundary)
+function InfoMessage({ setInfo }: { setInfo: (v: string | null) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const msg = searchParams.get('mensaje')
+    if (msg) setInfo(decodeURIComponent(msg))
+  }, [searchParams, setInfo])
+  return null
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -11,12 +22,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const msg = searchParams.get('mensaje')
-    if (msg) setInfo(decodeURIComponent(msg))
-  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,6 +49,11 @@ export default function LoginPage() {
 
   return (
     <>
+      {/* Reads ?mensaje= param without blocking static prerender */}
+      <Suspense fallback={null}>
+        <InfoMessage setInfo={setInfo} />
+      </Suspense>
+
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900">Bienvenido de vuelta</h2>
         <p className="text-gray-500 mt-1">Ingresa a tu cuenta de Sara Medical</p>
