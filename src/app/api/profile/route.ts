@@ -24,6 +24,7 @@ export async function GET() {
         avatarUrl: true,
         address: true,
         whatsapp: true,
+        webhookUrl: true,
         schedules: true,
         services: true,
       },
@@ -44,7 +45,7 @@ export async function PATCH(req: Request) {
     if (error || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { name, specialty, phone, bio, avatarUrl, address, whatsapp, schedules, services, slug } = body
+    const { name, specialty, phone, bio, avatarUrl, address, whatsapp, webhookUrl, schedules, services, slug } = body
 
     const doctor = await prisma.doctor.findFirst({
       where: { OR: [{ id: user.id }, { email: user.email! }] },
@@ -72,6 +73,7 @@ export async function PATCH(req: Request) {
         ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }),
         ...(address !== undefined && { address: address || null }),
         ...(whatsapp !== undefined && { whatsapp: whatsapp || null }),
+        ...(webhookUrl !== undefined && { webhookUrl: webhookUrl || null }),
         ...(schedules !== undefined && { schedules: schedules || null }),
         ...(services !== undefined && { services: services || null }),
         ...(slug !== undefined && { slug: String(slug).toLowerCase().replace(/[^a-z0-9-]/g, '') }),
@@ -87,6 +89,7 @@ export async function PATCH(req: Request) {
         avatarUrl: true,
         address: true,
         whatsapp: true,
+        webhookUrl: true,
         schedules: true,
         services: true,
       },

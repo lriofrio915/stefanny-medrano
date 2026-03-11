@@ -45,6 +45,7 @@ export default function ProfilePage() {
     bio: '',
     address: '',
     whatsapp: '',
+    webhookUrl: '',
     slug: '',
   })
   const [copied, setCopied] = useState(false)
@@ -77,6 +78,7 @@ export default function ProfilePage() {
           bio: data.bio ?? '',
           address: data.address ?? '',
           whatsapp: data.whatsapp ?? '',
+          webhookUrl: (data as any).webhookUrl ?? '',
           slug: data.slug ?? '',
         })
       })
@@ -359,22 +361,24 @@ export default function ProfilePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Teléfono
+              WhatsApp Personal
             </label>
             <input
               type="tel"
               name="phone"
               value={form.phone}
               onChange={handleChange}
-              placeholder="+593 998 176 580"
+              placeholder="+593 99 123 4567"
               className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
+            <p className="text-gray-400 text-xs mt-1">Tu número personal — no se muestra públicamente</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              WhatsApp
+              WhatsApp Business — Agente Sara IA
             </label>
+            <p className="text-gray-400 text-xs mb-1.5">Número donde vive el agente Sara IA que atiende y agenda a tus pacientes</p>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#25D366] text-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -404,6 +408,21 @@ export default function ProfilePage() {
               placeholder="Av. Principal 123, Consultorio 4B, Ciudad"
               className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Webhook de contacto (n8n)
+            </label>
+            <input
+              type="url"
+              name="webhookUrl"
+              value={form.webhookUrl}
+              onChange={handleChange}
+              placeholder="https://tu-n8n.com/webhook/tu-flujo"
+              className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+            />
+            <p className="text-gray-400 text-xs mt-1">El formulario de contacto de tu página enviará los datos a esta URL</p>
           </div>
         </div>
 

@@ -516,17 +516,37 @@ function HowItWorks() {
 
 const plans = [
   {
+    name: 'Starter',
+    price: '$29',
+    period: '/mes',
+    desc: 'Para empezar a digitalizar tu consultorio y atraer pacientes.',
+    highlight: false,
+    badge: null,
+    features: [
+      'Hasta 50 pacientes activos',
+      'Agenda inteligente',
+      'Fichas médicas básicas y recetas',
+      'Landing page personalizada con subdominio',
+      'Formulario de contacto en tu página',
+      'Generación de recetas digitales',
+      'Soporte por email',
+    ],
+    cta: 'Empezar con Starter',
+    ctaStyle: 'border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary',
+  },
+  {
     name: 'Pro',
     price: '$79',
     period: '/mes',
-    desc: 'Para médicos que quieren crecer con IA completa.',
+    desc: 'Para médicos que quieren crecer con IA y automatizar la atención.',
     highlight: true,
     badge: 'Más popular',
     features: [
       'Pacientes ilimitados',
-      'Agenda inteligente',
-      'Fichas médicas y recetas digitales',
-      'Subdominio personalizado',
+      'Todo lo del plan Starter',
+      '🤖 Agente Sara IA en tu WhatsApp Business',
+      'Sara IA atiende, responde y agenda citas 24/7',
+      'Notificación al médico en tiempo real',
       'Contenido para RRSS con IA',
       'Imágenes generadas por IA',
       'Recordatorios automáticos',
@@ -574,7 +594,7 @@ function Pricing() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-6 items-stretch max-w-3xl mx-auto">
+        <div className="grid sm:grid-cols-3 gap-6 items-stretch">
           {plans.map((plan) => (
             <div
               key={plan.name}

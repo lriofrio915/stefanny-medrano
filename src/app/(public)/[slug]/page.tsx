@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import DoctorContactForm from '@/components/DoctorContactForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,7 +61,7 @@ export default async function DoctorPublicPage({ params }: Props) {
     where: { slug: params.slug },
     select: {
       id: true, name: true, specialty: true, bio: true,
-      avatarUrl: true, address: true, whatsapp: true,
+      avatarUrl: true, address: true, whatsapp: true, webhookUrl: true,
       schedules: true, services: true, phone: true,
     },
   })
@@ -299,6 +300,26 @@ export default async function DoctorPublicPage({ params }: Props) {
         </section>
 
       </main>
+
+      {/* ── FORMULARIO DE CONTACTO ── */}
+      {doctor.webhookUrl && (
+        <section className="py-12 mb-4">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <span className="inline-block bg-blue-50 text-blue-600 font-semibold text-sm px-4 py-1.5 rounded-full mb-4">
+                Contacto directo
+              </span>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Tienes alguna pregunta?
+              </h2>
+              <p className="text-gray-500 text-sm">
+                Deja tus datos y el equipo de {displayName} te responderá a la brevedad.
+              </p>
+            </div>
+            <DoctorContactForm slug={params.slug} doctorName={displayName} />
+          </div>
+        </section>
+      )}
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-gray-100 bg-white py-6 text-center text-gray-400 text-xs">
