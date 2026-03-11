@@ -6,47 +6,47 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false)
+  const [expired, setExpired] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
-  // Exchange the code/token Supabase puts in the URL for a session
   useEffect(() => {
     const supabase = createClient()
 
-    // Supabase puts the code in ?code= (PKCE) or tokens in the hash (implicit)
-    const params = new URLSearchParams(window.location.search)
-    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-    const code = params.get('code')
-    const errorCode = params.get('error_code') || hashParams.get('error_code')
-
-    if (errorCode === 'otp_expired' || params.get('error')) {
-      setError('El enlace expiró o ya fue usado.')
-      return
-    }
-
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
-        if (exchangeError) {
-          setError('El enlace expiró o ya fue usado.')
-        } else {
-          setReady(true)
-        }
-      })
-      return
-    }
-
-    // No code — check if there's already an active recovery session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    // Listen for the PASSWORD_RECOVERY event that Supabase emits
+    // automatically when it detects ?code= in the URL
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
         setReady(true)
-      } else {
-        setError('El enlace expiró o ya fue usado.')
       }
     })
+
+    // Fallback timeout: if no event fires in 5s, the link is expired/invalid
+    const timer = setTimeout(() => {
+      setExpired(true)
+    }, 5000)
+
+    // If there's an error in the URL params, show expired immediately
+    const params = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    if (params.get('error') || hashParams.get('error')) {
+      clearTimeout(timer)
+      setExpired(true)
+    }
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timer)
+    }
   }, [])
+
+  // Once ready, clear the expired state in case timer fired first
+  useEffect(() => {
+    if (ready) setExpired(false)
+  }, [ready])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  // Success state
+  // Success
   if (done) {
     return (
       <>
@@ -100,8 +100,8 @@ export default function ResetPasswordPage() {
     )
   }
 
-  // Error / expired link state
-  if (error && !ready) {
+  // Expired / invalid link
+  if (expired && !ready) {
     return (
       <>
         <div className="mb-8 text-center">
@@ -125,7 +125,7 @@ export default function ResetPasswordPage() {
     )
   }
 
-  // Loading while exchanging code
+  // Verifying
   if (!ready) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
