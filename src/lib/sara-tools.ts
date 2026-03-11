@@ -313,6 +313,7 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
         type: (args.type as 'IN_PERSON' | 'TELECONSULT' | 'HOME_VISIT' | 'EMERGENCY' | 'FOLLOW_UP') || 'IN_PERSON',
         reason: (args.reason as string) || null,
         notes: (args.notes as string) || null,
+        location: (args.location as string) || null,
         status: 'SCHEDULED',
       },
       include: { patient: { select: { name: true } } },
@@ -324,10 +325,12 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
       timeStyle: 'short',
     })
 
+    const locationInfo = (args.location as string) || null
+
     return {
       success: true,
       data: {
-        message: `✅ Cita confirmada para ${appointment.patient.name} el ${dateStr}`,
+        message: `✅ Cita confirmada para ${appointment.patient.name} el ${dateStr}${locationInfo ? ` — ${locationInfo}` : ''}`,
         appointment: {
           id: appointment.id,
           patientName: appointment.patient.name,
@@ -335,6 +338,7 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
           duration: appointment.duration,
           type: appointment.type,
           reason: appointment.reason,
+          location: appointment.location,
         },
       },
     }

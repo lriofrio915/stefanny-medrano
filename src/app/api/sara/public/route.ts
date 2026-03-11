@@ -85,6 +85,7 @@ const PUBLIC_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
             description: 'Tipo de cita',
           },
           reason: { type: 'string', description: 'Motivo de la consulta' },
+          location: { type: 'string', description: 'Dirección del centro de atención (obtenida de check_available_slots)' },
         },
         required: ['date'],
       },
