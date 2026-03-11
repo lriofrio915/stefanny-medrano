@@ -38,7 +38,6 @@ export async function middleware(request: NextRequest) {
   // IMPORTANT: Do not add any logic between createServerClient and getUser()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
   const isPatient = user?.user_metadata?.role === 'patient'
 
   const isAuthRoute =
