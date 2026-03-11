@@ -17,11 +17,7 @@ export default function ForgotPasswordPage() {
 
     try {
       const supabase = createClient()
-      const base =
-        typeof window !== 'undefined'
-          ? window.location.origin
-          : (process.env.NEXT_PUBLIC_APP_URL ?? '')
-      const redirectTo = `${base}/reset-password`
+      const redirectTo = 'https://consultorio.site/reset-password'
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,
