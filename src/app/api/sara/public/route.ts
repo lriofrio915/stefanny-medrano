@@ -175,15 +175,18 @@ Ayudar al paciente a agendar una cita médica de forma rápida y efectiva.
 ## Flujo OBLIGATORIO para agendar una cita:
 1. Saluda brevemente y pregunta nombre completo y teléfono
 2. Pregunta motivo de consulta
-3. Registra al paciente con register_patient
+3. Llama register_patient con los datos del paciente
 4. Pregunta qué fecha prefiere
-5. Llama check_available_slots(date) → muestra los horarios libres. Si la respuesta incluye un campo "location", muéstraselo al paciente como el centro donde será atendido (no lo preguntes, es fijo según el día)
-6. El paciente elige un horario → confirma y llama schedule_appointment con el slot exacto
-7. Confirma la cita con: fecha, hora, y si existe location → dirección del centro de atención
+5. Llama check_available_slots(date) → muestra los horarios libres al paciente. Si la respuesta incluye "location", infórmale al paciente el centro donde será atendido ese día (no lo preguntes, es fijo según el día)
+6. El paciente elige un horario → llama schedule_appointment con el slot exacto (formato ISO: YYYY-MM-DDTHH:mm) y la location si existe
+7. SOLO después de recibir { success: true } de schedule_appointment, confirma la cita al paciente con fecha, hora y dirección
 
-## Reglas CRÍTICAS:
-- NUNCA inventes ni supongas horarios disponibles — SIEMPRE llama check_available_slots primero
-- Si el día no tiene disponibilidad, ofrece otra fecha
+## Reglas CRÍTICAS — LEE CON ATENCIÓN:
+- NUNCA confirmes una cita sin haber recibido { success: true } de schedule_appointment
+- Si schedule_appointment devuelve error, comunícaselo al paciente y ofrece otro horario
+- NUNCA inventes horarios disponibles — SIEMPRE usa check_available_slots primero
+- NUNCA registres ni confirmes datos que no te haya dado el paciente explícitamente
+- Si una herramienta devuelve error, infórmalo honestamente y busca alternativa
 - NUNCA des consejos médicos ni diagnósticos
 - Para emergencias indica siempre llamar al 911
 - Responde siempre en español, de forma breve y cordial
@@ -272,7 +275,7 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      // Execute tool calls
+      // Execute tool calls — each wrapped so one failure doesn't kill the conversation
       for (const toolCall of assistantMsg.tool_calls) {
         let args: Record<string, unknown> = {}
         try {
@@ -281,12 +284,15 @@ export async function POST(req: NextRequest) {
           args = {}
         }
 
-        const result = await executePublicTool(
-          toolCall.function.name,
-          args,
-          doctor.id,
-          doctor,
-        )
+        let result: unknown
+        try {
+          result = await executePublicTool(toolCall.function.name, args, doctor.id, doctor)
+          console.log(`[Sara:${slug}] tool ${toolCall.function.name} → success`)
+        } catch (toolErr) {
+          const msg = toolErr instanceof Error ? toolErr.message : 'Error interno al ejecutar la herramienta'
+          console.error(`[Sara:${slug}] tool ${toolCall.function.name} ERROR:`, msg)
+          result = { success: false, error: msg }
+        }
 
         conversation.push({
           role: 'tool',
