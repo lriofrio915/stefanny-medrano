@@ -526,8 +526,8 @@ const plans = [
     checkoutUrl: 'https://pay.hotmart.com/A104847710N?checkoutMode=2',
     features: [
       { icon: '✔', text: 'Hasta 50 pacientes activos.' },
-      { icon: '✔', text: 'Agenda inteligente (Vista diaria/semanal).' },
-      { icon: '✔', text: 'Fichas médicas y recetas digitales.' },
+      { icon: '✔', text: 'Agenda inteligente (Vista diaria/semanal/mensual).' },
+      { icon: '✔', text: 'Fichas médicas, recetas digitales y CIE-10.' },
       { icon: '✔', text: 'Web Médica Profesional (Subdominio).' },
       { icon: '✔', text: 'Captación de pacientes vía WhatsApp.' },
       { icon: '✔', text: 'Soporte técnico por email.' },
@@ -544,6 +544,7 @@ const plans = [
     badge: 'Más popular',
     checkoutUrl: 'https://pay.hotmart.com/X104843203F?checkoutMode=2',
     features: [
+      { icon: '✔', text: 'Pacientes ilimitados (Starter solo permite 50).' },
       { icon: '✔', text: 'Todo lo del Plan Starter incluido.' },
       { icon: '🤖', text: 'Agente Sara IA en tu WhatsApp Business.' },
       { icon: '✔', text: 'Atención, respuestas y agendamiento 24/7.' },
@@ -558,7 +559,7 @@ const plans = [
     name: 'Enterprise',
     price: '$199',
     period: '/mes',
-    priceSubtitle: 'hasta 7 médicos',
+    priceSubtitle: 'hasta 5 médicos',
     priceNote: '+$25/mes por médico adicional',
     desc: 'La solución completa para clínicas y grupos médicos con múltiples sedes.',
     highlight: false,
@@ -566,7 +567,7 @@ const plans = [
     checkoutUrl: 'https://pay.hotmart.com/N104843955S?checkoutMode=2',
     features: [
       { icon: '✔', text: 'Todo lo del Plan PRO incluido.' },
-      { icon: '✔', text: 'Gestión Multi-sede y Multi-médico (Hasta 7).' },
+      { icon: '✔', text: 'Gestión Multi-sede y Multi-médico (Hasta 5).' },
       { icon: '✔', text: 'White Label: Marca y dominio personalizado.' },
       { icon: '✔', text: 'Onboarding y configuración asistida.' },
       { icon: '✔', text: 'Soporte VIP (Respuesta < 2 horas).' },
