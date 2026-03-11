@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -47,13 +48,17 @@ export default function RegisterPage() {
     })
 
     if (signUpError) {
-      const msg = signUpError.message === 'User already registered'
-        ? 'Ya existe una cuenta con este correo. ¿Olvidaste tu contraseña?'
-        : signUpError.message
-      setError(msg)
+      if (signUpError.message === 'User already registered') {
+        setIsAlreadyRegistered(true)
+        setError('Ya existe una cuenta con este correo.')
+      } else {
+        setIsAlreadyRegistered(false)
+        setError(signUpError.message)
+      }
       setLoading(false)
       return
     }
+    setIsAlreadyRegistered(false)
 
     // 2. Crear registro Doctor en Prisma vía API
     const res = await fetch('/api/auth/register', {
@@ -101,7 +106,12 @@ export default function RegisterPage() {
 
       {error && (
         <div className="mb-5 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
-          {error}
+          {error}{' '}
+          {isAlreadyRegistered && (
+            <Link href="/forgot-password" className="font-semibold underline hover:text-red-900">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          )}
         </div>
       )}
 
