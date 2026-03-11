@@ -272,8 +272,19 @@ async function scheduleAppointment(args: Record<string, unknown>, doctorId: stri
 
     if (!patientId) return { success: false, error: 'Se requiere el ID o nombre del paciente' }
 
-    // Validate slot availability before booking
-    const appointmentDate = new Date(date)
+    // Parse date as Ecuador local time (UTC-5) → convert to UTC for storage
+    // Sara passes times in Ecuador local time (e.g. "2026-03-11T16:30")
+    // new Date('YYYY-MM-DDTHH:mm') on a UTC server = UTC, causing -5h shift in display
+    // Fix: explicitly add 5 hours to treat input as UTC-5
+    let appointmentDate: Date
+    try {
+      const [datePart, timePart = '00:00'] = date.split('T')
+      const [y, mo, d] = datePart.split('-').map(Number)
+      const [h, mi] = timePart.split(':').map(Number)
+      appointmentDate = new Date(Date.UTC(y, mo - 1, d, h + 5, mi)) // UTC-5 → UTC
+    } catch {
+      appointmentDate = new Date(date)
+    }
     let apptDuration = 30
     try {
       const doc = await prisma.doctor.findUnique({

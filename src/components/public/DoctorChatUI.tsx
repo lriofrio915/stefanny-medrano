@@ -1,6 +1,24 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+
+// Web Speech API type shim (not always in TS DOM lib)
+type SpeechRecognitionInstance = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((e: { results: { 0: { transcript: string; isFinal: boolean }; isFinal: boolean }[] }) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognitionInstance
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance
+  }
+}
 
 interface DoctorInfo {
   name: string
@@ -41,12 +59,62 @@ export default function DoctorChatUI({ doctor }: { doctor: DoctorInfo }) {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
+
+  useEffect(() => {
+    setVoiceSupported(!!(window.SpeechRecognition || window.webkitSpeechRecognition))
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const stopListening = useCallback(() => {
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+    setIsListening(false)
+  }, [])
+
+  function toggleVoice() {
+    if (isListening) {
+      stopListening()
+      return
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) return
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'es-EC'
+    recognition.continuous = false
+    recognition.interimResults = true
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .map((r) => r[0].transcript)
+        .join('')
+      setInput(transcript)
+    }
+
+    recognition.onerror = () => {
+      setIsListening(false)
+      recognitionRef.current = null
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+      recognitionRef.current = null
+      // Focus input after voice ends so user can review/send
+      setTimeout(() => inputRef.current?.focus(), 100)
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+  }
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return
@@ -219,16 +287,20 @@ export default function DoctorChatUI({ doctor }: { doctor: DoctorInfo }) {
 
       {/* Input */}
       <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3 shadow-lg">
-        <div className="flex items-end gap-3 max-w-2xl mx-auto">
+        <div className="flex items-end gap-2 max-w-2xl mx-auto">
           <textarea
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Escribe tu mensaje..."
+            placeholder={isListening ? 'Escuchando...' : 'Escribe o habla tu mensaje...'}
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition disabled:opacity-50"
+            className={`flex-1 resize-none rounded-2xl border px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-blue-500 transition disabled:opacity-50 ${
+              isListening
+                ? 'border-red-300 bg-red-50 focus:ring-red-300/30'
+                : 'border-gray-200 bg-gray-50 focus:ring-blue-500/30'
+            }`}
             style={{ maxHeight: '120px' }}
             onInput={(e) => {
               const el = e.currentTarget
@@ -236,6 +308,38 @@ export default function DoctorChatUI({ doctor }: { doctor: DoctorInfo }) {
               el.style.height = `${Math.min(el.scrollHeight, 120)}px`
             }}
           />
+
+          {/* Mic button — only shown if browser supports it */}
+          {voiceSupported && (
+            <button
+              type="button"
+              onClick={toggleVoice}
+              disabled={loading}
+              aria-label={isListening ? 'Detener grabación' : 'Hablar'}
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all ${
+                isListening
+                  ? 'bg-red-500 text-white shadow-lg scale-110 animate-pulse'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40'
+              }`}
+            >
+              {isListening ? (
+                /* Stop icon */
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                /* Mic icon */
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </button>
+          )}
+
+          {/* Send button */}
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
@@ -250,7 +354,9 @@ export default function DoctorChatUI({ doctor }: { doctor: DoctorInfo }) {
           </button>
         </div>
         <p className="text-center text-gray-400 text-xs mt-2">
-          Sara es una asistente IA. Para emergencias, llama al 911.
+          {isListening
+            ? '🔴 Grabando... habla ahora. Toca el cuadrado para detener.'
+            : 'Sara es una asistente IA. Para emergencias, llama al 911.'}
         </p>
       </div>
     </div>
