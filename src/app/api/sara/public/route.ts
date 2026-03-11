@@ -103,6 +103,7 @@ type DoctorData = {
   whatsapp: string | null
   schedules: string | null
   services: string | null
+  branches: string | null
 }
 
 function executePublicTool(
@@ -112,21 +113,26 @@ function executePublicTool(
   doctor: DoctorData,
 ): Promise<unknown> {
   switch (toolName) {
-    case 'get_doctor_info':
+    case 'get_doctor_info': {
+      let branches: { name: string; address: string }[] = []
+      try { branches = doctor.branches ? JSON.parse(doctor.branches) : [] } catch { /* ignore */ }
+      const locations = [
+        ...(doctor.address ? [{ name: 'Consultorio principal', address: doctor.address }] : []),
+        ...branches,
+      ]
       return Promise.resolve({
         success: true,
         data: {
           name: doctor.name,
           specialty: doctor.specialty,
           bio: doctor.bio ?? 'Información no disponible.',
-          address: doctor.address ?? 'Consultar por teléfono.',
+          locations: locations.length > 0 ? locations : [{ name: 'Consultorio', address: 'Consultar por teléfono.' }],
           phone: doctor.phone ?? doctor.whatsapp ?? 'No disponible',
           whatsapp: doctor.whatsapp,
-          services: doctor.services
-            ? doctor.services.split('\n').filter(Boolean)
-            : [],
+          services: doctor.services ? doctor.services.split('\n').filter(Boolean) : [],
         },
       })
+    }
 
     case 'check_available_slots':
     case 'register_patient':
@@ -164,10 +170,11 @@ Ayudar al paciente a agendar una cita médica de forma rápida y efectiva.
 1. Saluda brevemente y pregunta nombre completo y teléfono
 2. Pregunta motivo de consulta
 3. Registra al paciente con register_patient
-4. Pregunta qué fecha prefiere
-5. Llama check_available_slots(date) para esa fecha → muestra los horarios libres al paciente
-6. El paciente elige un horario → confirma y llama schedule_appointment con el slot exacto
-7. Confirma la cita con los detalles (fecha, hora, dirección)
+4. Si el médico tiene más de un centro de atención (locations), pregunta al paciente en cuál prefiere ser atendido
+5. Pregunta qué fecha prefiere
+6. Llama check_available_slots(date) para esa fecha → muestra los horarios libres al paciente
+7. El paciente elige un horario → confirma y llama schedule_appointment con el slot exacto y la ubicación seleccionada
+8. Confirma la cita con los detalles (fecha, hora, centro de atención y dirección)
 
 ## Reglas CRÍTICAS:
 - NUNCA inventes ni supongas horarios disponibles — SIEMPRE llama check_available_slots primero
@@ -209,6 +216,7 @@ export async function POST(req: NextRequest) {
         whatsapp: true,
         schedules: true,
         services: true,
+        branches: true,
         active: true,
       },
     })

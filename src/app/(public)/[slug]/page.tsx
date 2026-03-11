@@ -62,7 +62,7 @@ export default async function DoctorPublicPage({ params }: Props) {
     select: {
       id: true, name: true, specialty: true, bio: true,
       avatarUrl: true, address: true, whatsapp: true, webhookUrl: true,
-      schedules: true, services: true, phone: true,
+      branches: true, schedules: true, services: true, phone: true,
     },
   })
 
@@ -77,6 +77,11 @@ export default async function DoctorPublicPage({ params }: Props) {
   const scheduleLines = doctor.schedules
     ? doctor.schedules.split('\n').map((s) => s.trim()).filter(Boolean)
     : []
+
+  let parsedBranches: { name: string; address: string }[] = []
+  try {
+    parsedBranches = doctor.branches ? JSON.parse(doctor.branches) : []
+  } catch { /* ignore */ }
 
   const whatsappNumber = doctor.whatsapp?.replace(/\D/g, '') ?? null
   const whatsappUrl    = whatsappNumber
@@ -199,8 +204,8 @@ export default async function DoctorPublicPage({ params }: Props) {
         </div>
 
         {/* ── HORARIOS + UBICACIÓN ── */}
-        {(scheduleLines.length > 0 || doctor.address) && (
-          <div className="grid md:grid-cols-2 gap-6 py-12">
+        {(scheduleLines.length > 0 || doctor.address || parsedBranches.length > 0) && (
+          <div className={`grid gap-6 py-12 ${scheduleLines.length > 0 ? 'md:grid-cols-2' : ''}`}>
             {scheduleLines.length > 0 && (
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                 <h2 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-3">
@@ -218,16 +223,40 @@ export default async function DoctorPublicPage({ params }: Props) {
               </div>
             )}
 
-            {doctor.address && (
+            {(doctor.address || parsedBranches.length > 0) && (
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
                 <h2 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-3">
                   <span className="w-10 h-10 rounded-2xl bg-teal-50 flex items-center justify-center text-xl flex-shrink-0">📍</span>
-                  Ubicación
+                  {parsedBranches.length > 0 ? 'Centros de atención' : 'Ubicación'}
                 </h2>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">{doctor.address}</p>
+
+                {/* Consultorio principal */}
+                {doctor.address && (
+                  <div className={parsedBranches.length > 0 ? 'mb-4' : ''}>
+                    {parsedBranches.length > 0 && (
+                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Consultorio principal</p>
+                    )}
+                    <p className="text-gray-600 text-sm leading-relaxed">{doctor.address}</p>
+                  </div>
+                )}
+
+                {/* Sucursales */}
+                {parsedBranches.length > 0 && (
+                  <div className="space-y-3 mt-3">
+                    {parsedBranches.map((branch, i) => (
+                      <div key={i} className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                        {branch.name && (
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{branch.name}</p>
+                        )}
+                        <p className="text-gray-600 text-sm leading-relaxed">{branch.address}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {doctor.phone && (
                   <a href={`tel:${doctor.phone}`}
-                    className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+                    className="inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium px-4 py-2 rounded-xl transition-colors mt-4">
                     <span>📞</span>
                     {doctor.phone}
                   </a>

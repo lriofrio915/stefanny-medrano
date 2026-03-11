@@ -87,6 +87,7 @@ model Doctor {
   address   String?
   whatsapp    String?   // WhatsApp Business — Agente Sara IA
   webhookUrl  String?   // n8n webhook personalizado del médico
+  branches    String?   // JSON: [{name, address}] sucursales adicionales
   schedules String?
   services  String?
   appointmentDuration Int @default(30)

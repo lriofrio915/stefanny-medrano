@@ -17,6 +17,12 @@ interface DoctorProfile {
   address: string | null
   whatsapp: string | null
   schedules: string | null
+  branches: string | null
+}
+
+interface Branch {
+  name: string
+  address: string
 }
 
 interface DaySchedule {
@@ -27,6 +33,8 @@ interface DaySchedule {
 }
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+// Display order: Lunes → Sábado → Domingo
+const DISPLAY_WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 const DURATION_OPTIONS = [15, 20, 30, 45, 60]
 
 const DEFAULT_SCHEDULE: DaySchedule[] = DAYS.map((_, weekday) => ({
@@ -48,6 +56,7 @@ export default function ProfilePage() {
     webhookUrl: '',
     slug: '',
   })
+  const [branches, setBranches] = useState<Branch[]>([])
   const [copied, setCopied] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -81,6 +90,11 @@ export default function ProfilePage() {
           webhookUrl: (data as any).webhookUrl ?? '',
           slug: data.slug ?? '',
         })
+        try {
+          setBranches(data.branches ? JSON.parse(data.branches) : [])
+        } catch {
+          setBranches([])
+        }
       })
       .catch(() => setError('Error cargando perfil'))
 
@@ -119,6 +133,18 @@ export default function ProfilePage() {
     setWeekSchedule((prev) =>
       prev.map((d) => (d.weekday === weekday ? { ...d, [field]: value } : d))
     )
+  }
+
+  function addBranch() {
+    setBranches((prev) => [...prev, { name: '', address: '' }])
+  }
+
+  function removeBranch(index: number) {
+    setBranches((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function updateBranch(index: number, field: 'name' | 'address', value: string) {
+    setBranches((prev) => prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)))
   }
 
   async function copyLink() {
@@ -174,7 +200,12 @@ export default function ProfilePage() {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, avatarUrl, slug: form.slug }),
+        body: JSON.stringify({
+          ...form,
+          avatarUrl,
+          slug: form.slug,
+          branches: branches.length > 0 ? JSON.stringify(branches.filter((b) => b.address.trim())) : null,
+        }),
       })
 
       if (!res.ok) {
@@ -398,7 +429,7 @@ export default function ProfilePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Dirección / Consultorio
+              Consultorio principal
             </label>
             <input
               type="text"
@@ -410,19 +441,66 @@ export default function ProfilePage() {
             />
           </div>
 
+          {/* Sucursales adicionales */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Webhook de contacto (n8n)
-            </label>
-            <input
-              type="url"
-              name="webhookUrl"
-              value={form.webhookUrl}
-              onChange={handleChange}
-              placeholder="https://tu-n8n.com/webhook/tu-flujo"
-              className="input dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
-            />
-            <p className="text-gray-400 text-xs mt-1">El formulario de contacto de tu página enviará los datos a esta URL</p>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Sucursales adicionales <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <p className="text-gray-400 text-xs mt-0.5">Si atiendes en varios centros, clínicas u hospitales</p>
+              </div>
+              <button
+                type="button"
+                onClick={addBranch}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Añadir sucursal
+              </button>
+            </div>
+
+            {branches.length === 0 && (
+              <p className="text-xs text-gray-400 italic py-2">Sin sucursales — los pacientes serán agendados en el consultorio principal.</p>
+            )}
+
+            <div className="space-y-3">
+              {branches.map((branch, i) => (
+                <div key={i} className="bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 font-semibold w-5">#{i + 1}</span>
+                    <input
+                      type="text"
+                      value={branch.name}
+                      onChange={(e) => updateBranch(i, 'name', e.target.value)}
+                      placeholder="Nombre del lugar (ej. Hospital del Sur)"
+                      className="flex-1 input text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeBranch(i)}
+                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5" />
+                    <input
+                      type="text"
+                      value={branch.address}
+                      onChange={(e) => updateBranch(i, 'address', e.target.value)}
+                      placeholder="Dirección completa"
+                      className="flex-1 input text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -568,7 +646,9 @@ export default function ProfilePage() {
         {/* Días de la semana */}
         <div className="space-y-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Días y horarios</p>
-          {weekSchedule.map((day) => (
+          {DISPLAY_WEEKDAY_ORDER.map((weekdayIndex) => {
+            const day = weekSchedule.find((d) => d.weekday === weekdayIndex)!
+            return (
             <div key={day.weekday} className={`flex flex-wrap items-center gap-x-3 gap-y-2 p-3 rounded-xl border transition-colors ${
               day.isActive
                 ? 'border-primary/30 bg-primary/5 dark:bg-primary/10'
@@ -621,7 +701,8 @@ export default function ProfilePage() {
                 <span className="text-xs text-gray-400 dark:text-gray-500">Cerrado</span>
               )}
             </div>
-          ))}
+          )
+          })}
         </div>
 
         <button
