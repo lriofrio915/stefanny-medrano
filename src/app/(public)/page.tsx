@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Script from 'next/script'
 import NavHeader from '@/components/landing/NavHeader'
 import BackToTop from '@/components/landing/BackToTop'
 
@@ -519,41 +520,42 @@ const plans = [
     name: 'Starter',
     price: '$59',
     period: '/mes',
-    desc: 'Para empezar a digitalizar tu consultorio y atraer pacientes.',
+    desc: 'Todo lo que necesitas para digitalizar tu consultorio desde el primer día.',
     highlight: false,
     badge: null,
+    checkoutUrl: 'https://pay.hotmart.com/A104847710N?checkoutMode=2',
     features: [
-      'Hasta 50 pacientes activos',
-      'Agenda inteligente',
-      'Fichas médicas básicas y recetas',
-      'Landing page personalizada con subdominio',
-      'Formulario de contacto en tu página',
-      'Generación de recetas digitales',
-      'Soporte por email',
+      '📋 Hasta 50 pacientes activos',
+      '📅 Agenda inteligente con vista diaria y semanal',
+      '🗂️ Fichas médicas completas por paciente',
+      '💊 Generación de recetas digitales',
+      '🌐 Página pública con tu subdominio incluido',
+      '📬 Formulario de contacto en tu landing',
+      '📩 Soporte por email',
     ],
-    cta: 'Empezar con Starter',
+    cta: 'Comenzar ahora',
     ctaStyle: 'border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary',
   },
   {
     name: 'Pro',
     price: '$79',
     period: '/mes',
-    desc: 'Para médicos que quieren crecer con IA y automatizar la atención.',
+    desc: 'Automatiza tu atención con IA y nunca pierdas un paciente fuera de horario.',
     highlight: true,
     badge: 'Más popular',
+    checkoutUrl: 'https://pay.hotmart.com/X104843203F?checkoutMode=2',
     features: [
-      'Pacientes ilimitados',
-      'Todo lo del plan Starter',
-      '🤖 Agente Sara IA en tu WhatsApp Business',
-      'Sara IA atiende, responde y agenda citas 24/7',
-      'Notificación al médico en tiempo real',
-      'Contenido para RRSS con IA',
-      'Imágenes generadas por IA',
-      'Recordatorios automáticos',
-      'Calificaciones de servicio',
-      'Soporte prioritario',
+      '♾️ Pacientes ilimitados',
+      '✅ Todo lo del plan Starter',
+      '🤖 Agente Sara IA en tu página y WhatsApp',
+      '🕐 Sara agenda citas por ti, 24/7 sin intervención',
+      '🔔 Notificaciones en tiempo real para el médico',
+      '📲 Recordatorios automáticos a tus pacientes',
+      '⭐ Calificaciones y reseñas de servicio',
+      '🎨 Contenido para redes sociales generado con IA',
+      '🚀 Soporte prioritario',
     ],
-    cta: 'Empezar con Pro',
+    cta: 'Quiero el Plan Pro',
     ctaStyle: 'bg-primary text-white hover:bg-primary-dark',
   },
   {
@@ -562,15 +564,16 @@ const plans = [
     period: '/mes',
     priceSubtitle: 'hasta 7 médicos',
     priceNote: '+$25/mes por médico adicional',
-    desc: 'Para clínicas y grupos médicos con múltiples sedes.',
+    desc: 'La solución completa para clínicas y grupos médicos con múltiples sedes.',
     highlight: false,
     badge: null,
+    checkoutUrl: 'https://pay.hotmart.com/N104843955S?checkoutMode=2',
     features: [
-      'Todo lo del plan Pro incluido',
-      'Multi-sede y multi-médico',
-      'Tu propia marca y dominio personalizado',
-      'Configuración asistida con acompañamiento personalizado',
-      'Plataforma 24/7 y soporte prioritario en menos de 2 horas',
+      '🏥 Multi-sede y multi-médico',
+      '✅ Todo lo del plan Pro incluido',
+      '🎨 Tu propia marca y dominio personalizado',
+      '🛠️ Onboarding asistido y configuración personalizada',
+      '⚡ Soporte VIP con respuesta en menos de 2 horas',
     ],
     cta: 'Contactar ventas',
     ctaStyle: 'border-2 border-gray-200 text-gray-700 hover:border-primary hover:text-primary',
@@ -580,6 +583,10 @@ const plans = [
 function Pricing() {
   return (
     <section id="pricing" className="py-24 bg-white">
+      {/* Hotmart Checkout Widget */}
+      <link rel="stylesheet" href="https://static.hotmart.com/css/hotmart-fb.min.css" />
+      <Script src="https://static.hotmart.com/checkout/widget.min.js" strategy="lazyOnload" />
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-14">
           <span className="inline-block bg-primary/10 text-primary font-semibold text-sm px-4 py-1.5 rounded-full mb-4">
@@ -590,7 +597,7 @@ function Pricing() {
             <span className="text-primary">Sin letras pequeñas.</span>
           </h2>
           <p className="mt-4 text-gray-500 max-w-lg mx-auto">
-            Prueba gratis 14 días. Cancela cuando quieras. Sin tarjeta de crédito para comenzar.
+            Acceso inmediato al suscribirte. Cancela cuando quieras.
           </p>
         </div>
 
@@ -643,22 +650,17 @@ function Pricing() {
               <ul className="space-y-3 mb-8 flex-1">
                 {plan.features.map((feat) => (
                   <li key={feat} className="flex items-start gap-2.5 text-sm">
-                    <span className={`flex-shrink-0 mt-0.5 text-base ${plan.highlight ? 'text-teal-300' : 'text-secondary'}`}>
-                      ✓
-                    </span>
                     <span className={plan.highlight ? 'text-blue-100' : 'text-gray-600'}>{feat}</span>
                   </li>
                 ))}
               </ul>
 
-              <Link
-                href="/register"
-                className={`w-full text-center font-semibold px-6 py-3.5 rounded-xl transition-all hover:-translate-y-0.5 text-sm ${plan.ctaStyle} ${
-                  plan.highlight ? '' : 'block'
-                }`}
+              <a
+                href={plan.checkoutUrl}
+                className={`hotmart-fb hotmart__button-checkout w-full text-center font-semibold px-6 py-3.5 rounded-xl transition-all hover:-translate-y-0.5 text-sm block ${plan.ctaStyle}`}
               >
                 {plan.cta}
-              </Link>
+              </a>
             </div>
           ))}
         </div>
