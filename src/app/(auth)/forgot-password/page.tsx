@@ -24,7 +24,12 @@ export default function ForgotPasswordPage() {
       })
 
       if (resetError) {
-        setError('No se pudo enviar el correo. Verifica la dirección e intenta de nuevo.')
+        const isRateLimit = resetError.message?.toLowerCase().includes('rate') || resetError.status === 429
+        setError(
+          isRateLimit
+            ? 'Demasiados intentos. Espera unos minutos antes de solicitar otro enlace.'
+            : 'No se pudo enviar el correo. Verifica la dirección e intenta de nuevo.'
+        )
         return
       }
 
