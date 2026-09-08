@@ -1,0 +1,12 @@
+[Unit]
+# Se desplaza 5 minutos respecto a publish-scheduled para no salir a la vez.
+# El handler busca citas completadas hace ~2h, así que el minuto es indiferente.
+Description=Sara Medical — encuestas de satisfacción (cada hora)
+
+[Timer]
+Unit=sara-cron@satisfaction-surveys.service
+OnCalendar=*-*-* *:05:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

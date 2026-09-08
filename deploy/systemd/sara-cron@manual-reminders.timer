@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — recordatorios manuales del médico por WhatsApp (cada 15 min)
+
+[Timer]
+Unit=sara-cron@manual-reminders.service
+OnCalendar=*-*-* *:00,15,30,45:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

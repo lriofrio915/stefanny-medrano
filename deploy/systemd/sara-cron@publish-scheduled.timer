@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — publicación de posts programados (cada hora)
+
+[Timer]
+Unit=sara-cron@publish-scheduled.service
+OnCalendar=*-*-* *:00:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

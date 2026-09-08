@@ -1,0 +1,13 @@
+[Unit]
+# Sara Medical — dispara un endpoint de /api/cron en producción.
+# La instancia es el nombre del endpoint: sara-cron@publish-scheduled.service
+# Migrado desde GitHub Actions el 2026-09-08.
+Description=Sara Medical — cron %i
+Documentation=file:///var/www/sara-solution/scripts/cron-endpoint.sh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/sara-solution/scripts/cron-endpoint.sh %i
+# La salida va al journal: journalctl -u sara-cron@%i.service

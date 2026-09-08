@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — recordatorios de citas 24h y 2h antes (8:00 Ecuador)
+
+[Timer]
+Unit=sara-cron@appointment-reminders.service
+OnCalendar=*-*-* 13:00:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -26,7 +26,12 @@ Esta fue una pérdida catastrófica e irrecuperable de datos de médicos reales.
 4. En caso de conflicto irresoluble: reportar al usuario, crear un backup manual, y ESPERAR instrucción.
 
 ### Base de datos — backup obligatorio antes de cualquier cambio de schema
-- Backup automático: GitHub Actions corre cada día a las 2am UTC → descargar desde Actions → Artifacts
+- Backup automático: `/etc/cron.d/sara-backup` en el VPS, cada día a las 3:00 (hora local del
+  VPS) → `/var/backups/sara-medical/`, retención 30 días, log en `/var/log/sara-backup.log`.
+  El workflow `daily-backup.yml` de GitHub Actions se eliminó el 2026-09-08 con el resto de
+  crons. **Ojo**: con eso desapareció la única copia fuera del VPS (subía el dump como
+  artifact con 90 días de retención). Hoy todos los backups viven en el mismo servidor.
+  Pendiente: mandar el dump a un destino externo (S3/Backblaze/Drive).
 - Backup manual: `npm run db:backup`
 - Restaurar: `npm run db:restore <archivo.sql.gz>`
 - Script: `scripts/backup-db.sh` y `scripts/restore-backup.sh`
@@ -42,20 +47,46 @@ Esta fue una pérdida catastrófica e irrecuperable de datos de médicos reales.
 2. `npm run build` — verificar que compile sin errores
 3. `git add ... && git commit && git push origin main` → Vercel deploya automáticamente
 
-## Crons (GitHub Actions)
-Los crons se configuran en `.github/workflows/`. Cada workflow hace `curl` al endpoint
-con `x-cron-secret` header. Secrets requeridos en GitHub → Settings → Secrets:
-- `APP_URL` — URL de producción (ej. `https://www.consultorio.site`)
-- `CRON_SECRET` — mismo valor que en `.env`
+## Crons (systemd timers en el VPS)
 
-Workflows activos:
-- `appointment-reminders.yml` — 8am EC, recordatorios de citas 24h y 2h antes
-- `birthday-reminders.yml` — 7am EC, felicitaciones de cumpleaños
-- `manual-reminders.yml` — cada 15 min, recordatorios manuales del médico vía WhatsApp
-- `trial-expiry.yml` — 6am EC, downgrade TRIAL → FREE
-- `token-expiry.yml` — 10am EC, limpieza de tokens expirados
-- `publish-scheduled.yml` — cada hora, publicación de posts programados
-- `satisfaction-surveys.yml` — encuestas de satisfacción
+Migrados desde GitHub Actions el 2026-09-08. En `.github/workflows/` sólo queda `ci.yml`;
+**no volver a crear workflows de cron ahí**.
+
+Cada timer ejecuta `scripts/cron-endpoint.sh <endpoint>`, que hace el `curl` con la cabecera
+`x-cron-secret` contra `/api/cron/<endpoint>` en producción. El script lee `CRON_SECRET` del
+`.env` del proyecto y usa `https://www.consultorio.site` como URL base (se puede sobrescribir
+con `CRON_APP_URL` en el `.env`).
+
+Unidades en `/etc/systemd/system/`:
+- `sara-cron@.service` — plantilla, la instancia es el nombre del endpoint
+- `sara-cron@<endpoint>.timer` — uno por cron
+
+| Timer | OnCalendar (UTC) | Qué hace |
+|---|---|---|
+| `sara-cron@trial-expiry` | 11:00 | 6am EC, downgrade TRIAL → FREE |
+| `sara-cron@birthday-reminders` | 12:00 | 7am EC, felicitaciones de cumpleaños |
+| `sara-cron@appointment-reminders` | 13:00 | 8am EC, recordatorios de citas 24h y 2h antes |
+| `sara-cron@token-expiry` | 15:00 | 10am EC, limpieza de tokens expirados |
+| `sara-cron@manual-reminders` | `*:00,15,30,45` | recordatorios manuales del médico vía WhatsApp |
+| `sara-cron@publish-scheduled` | `*:00` | publicación de posts programados |
+| `sara-cron@satisfaction-surveys` | `*:05` | encuestas de satisfacción |
+
+Los `OnCalendar` llevan `UTC` explícito a propósito: el VPS corre en `Europe/Berlin`, que
+tiene horario de verano, y Ecuador no. Sin el sufijo los disparos se moverían una hora en
+cada cambio de estación. El `cron` de Ubuntu (vixie 3.0pl1) **no** soporta `CRON_TZ`, por eso
+esto son systemd timers y no una entrada en `/etc/cron.d/`.
+
+Operación:
+```bash
+systemctl list-timers 'sara-cron@*' --all      # próximas ejecuciones
+systemctl start sara-cron@publish-scheduled    # disparo manual (equivale al workflow_dispatch)
+journalctl -u 'sara-cron@publish-scheduled.service' -n 50
+journalctl -u 'sara-cron@*' --since today      # todos
+```
+El script sale con código != 0 si el endpoint no devuelve 200, así que un fallo deja la
+unidad en estado `failed` y queda en el journal.
+
+El backup diario de la base es aparte: `/etc/cron.d/sara-backup`.
 
 ## Planes
 - FREE: acceso básico (post-trial)

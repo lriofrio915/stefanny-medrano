@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — aviso de tokens de redes por expirar (10:00 Ecuador)
+
+[Timer]
+Unit=sara-cron@token-expiry.service
+OnCalendar=*-*-* 15:00:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

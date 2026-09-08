@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — felicitaciones de cumpleaños (7:00 Ecuador)
+
+[Timer]
+Unit=sara-cron@birthday-reminders.service
+OnCalendar=*-*-* 12:00:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

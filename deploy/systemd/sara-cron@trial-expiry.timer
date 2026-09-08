@@ -1,0 +1,10 @@
+[Unit]
+Description=Sara Medical — downgrade TRIAL a FREE (6:00 Ecuador)
+
+[Timer]
+Unit=sara-cron@trial-expiry.service
+OnCalendar=*-*-* 11:00:00 UTC
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

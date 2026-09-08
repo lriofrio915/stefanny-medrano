@@ -1,5 +1,80 @@
 # Session Notes
 
+## Sesión 2026-09-08 — Los crons fallan + migración de GitHub Actions al VPS
+
+Reporte: "Run failed: Publish Scheduled Posts" y la creencia de que esos crons ya se habían
+migrado al VPS.
+
+### Causa real de los fallos: las credenciales de Postgres dejaron de ser válidas
+
+No era un problema de crons. **Cualquier** ruta que use Prisma devuelve 500 en producción,
+incluida `/api/buscar-medico?q=gavilanes`, que es pública y no tiene nada que ver con cron.
+
+Probando el `DATABASE_URL` directo:
+
+```
+Authentication failed against database server at
+`aws-0-us-west-2.pooler.supabase.com`, the provided database
+credentials for `postgres` are not valid.
+```
+
+Verificado que **no** es una pausa del proyecto ni un cambio de pooler:
+- El proyecto `useileqhvoxljyxpjgfb` responde en REST y auth (401 "No API key", no "paused").
+- En `aws-0-us-west-2` el error es de contraseña; en `aws-1-us-west-2` es
+  `tenant/user not found`. O sea: el proyecto sigue en `aws-0`, sólo cambió la contraseña.
+
+Cronología: `token-expiry` y `birthday-reminders` corrieron bien a las 05:42 UTC del 08-09;
+el primer 500 de `publish-scheduled` fue a las 10:43 UTC.
+
+**Pendiente y bloqueante — sólo lo puede hacer el usuario:**
+1. Supabase Dashboard → Project Settings → Database → Reset database password.
+2. Actualizar `DATABASE_URL` y `DIRECT_URL` en el `.env` local **y** en Vercel → Settings →
+   Environment Variables (Production).
+3. Redeploy en Vercel: los env vars no se aplican sin redeploy.
+
+Nada de esto toca el schema ni requiere backup previo. Es sólo la credencial.
+
+### Los crons NO estaban migrados; ahora sí
+
+Lo único que había en el VPS era `/etc/cron.d/sara-backup`. Los 8 workflows de
+`.github/workflows/` seguían siendo la única fuente de ejecución.
+
+Migrados a **systemd timers**, no a `/etc/cron.d/`: el `cron` de Ubuntu (vixie 3.0pl1) no
+soporta `CRON_TZ` —el manual lo dice y el binario no tiene el símbolo—, y el VPS corre en
+`Europe/Berlin`, con horario de verano. Con entradas de cron los horarios se habrían ido 2h
+y además habrían bailado en cada cambio de estación, mientras que Ecuador no tiene DST.
+`OnCalendar=... UTC` de systemd resuelve esto de forma explícita.
+
+Piezas nuevas:
+- `scripts/cron-endpoint.sh` — hace el `curl` con `x-cron-secret`, lee el secreto del `.env`,
+  y sale != 0 si la respuesta no es 200.
+- `/etc/systemd/system/sara-cron@.service` — plantilla; la instancia es el endpoint.
+- 7 timers `sara-cron@<endpoint>.timer`, todos habilitados y arrancados.
+
+Tabla de horarios y comandos de operación: ver `CLAUDE.md`, sección "Crons".
+
+Dos decisiones deliberadas:
+- **Sin reintentos.** Los workflows tampoco los tenían y estos endpoints no son idempotentes:
+  `publish-scheduled` con reintento publicaría dos veces el mismo post. (Un primer intento con
+  `curl --retry` además rompía el parseo: curl reintenta ante 5xx y concatenaba tres cuerpos
+  en la misma respuesta. Ahora el cuerpo va a un fichero temporal y el código HTTP a `-w`.)
+- **`satisfaction-surveys` a la hora en punto + 5 min** para no coincidir con
+  `publish-scheduled`. El handler busca citas completadas hace ~2h, el minuto da igual.
+
+### Riesgo abierto: se perdió la copia de backup fuera del VPS
+
+`daily-backup.yml` también se borró. Ese workflow subía el dump como artifact de GitHub con
+90 días de retención, y era **la única copia fuera del servidor**. El backup del VPS
+(`/etc/cron.d/sara-backup`, 3:00 local, retención 30 días) sigue corriendo y verificado, pero
+ahora todos los backups viven en la misma máquina que la que habría que restaurar.
+Pendiente: enviar el dump a un destino externo.
+
+### Nota de seguridad, no tocada
+
+`/var/www/sara-solution/.env` está en modo `644` (legible por cualquier usuario del VPS) y
+contiene `CRON_SECRET` y las credenciales de la base. No se cambió para no romper nada sin
+saber qué otro proceso lo lee. Merece revisión.
+
 ## Sesión 2026-09-06 (noche) — Previsualización de enlaces y nombres de médico
 
 Reporte: al compartir el perfil de una médica por WhatsApp salía solo texto, sin foto ni
