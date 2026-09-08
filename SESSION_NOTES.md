@@ -73,6 +73,29 @@ rotación: ese proyecto Supabase ya no existe, su DNS no resuelve. Liberty-tradi
   `umask 077`, `chmod 600` al dump, y verificación de que el fichero termina con
   `PostgreSQL database dump complete` — si no, lo borra y sale con error.
 
+### Copia de backups fuera del VPS, cifrada
+
+Cerrado el riesgo que dejó abierto el borrado de `daily-backup.yml`. Nuevo
+`scripts/backup-offsite.sh`, llamado desde `backup-db.sh`: cifra el dump con GPG simétrico
+AES256 y lo sube al bucket privado `db-backups` de Supabase Storage, con 30 días de retención
+remota. La frase de paso está en `/root/.sara-backup-passphrase` (600).
+
+Antes de subir, el script **descifra el fichero y valida el gzip**. Un backup remoto que no
+se puede descifrar es peor que no tenerlo, porque da falsa tranquilidad. Y si la subida falla
+no aborta: el backup local ya está hecho y es válido, así que solo avisa.
+
+Verificado el ciclo completo de restauración: descarga desde el bucket, `gpg --decrypt`,
+`gzip -t`, y conteo de filas dentro del dump descifrado — Doctor 9, Patient 17,
+Prescription 21, que coinciden con la base.
+
+Destino elegido por el usuario tras plantearle la alternativa. Limitación asumida y anotada:
+el bucket vive en el mismo proyecto Supabase que la base que respalda, así que cubre la
+pérdida del VPS pero no un compromiso de la cuenta de Supabase. El cifrado GPG es lo que
+mitiga ese segundo caso, siempre que la frase de paso no esté también en esa cuenta.
+
+**Pendiente del usuario**: guardar `/root/.sara-backup-passphrase` en su gestor de
+contraseñas. Si se pierde el VPS y con él esa frase, los backups remotos son irrecuperables.
+
 ### Los crons NO estaban migrados; ahora sí
 
 Lo único que había en el VPS era `/etc/cron.d/sara-backup`. Los 8 workflows de

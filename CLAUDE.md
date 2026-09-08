@@ -32,6 +32,23 @@ Esta fue una pérdida catastrófica e irrecuperable de datos de médicos reales.
   crons. **Ojo**: con eso desapareció la única copia fuera del VPS (subía el dump como
   artifact con 90 días de retención). Hoy todos los backups viven en el mismo servidor.
   Pendiente: mandar el dump a un destino externo (S3/Backblaze/Drive).
+- Copia fuera del VPS: `scripts/backup-offsite.sh`, llamado por `backup-db.sh` al terminar.
+  Cifra el dump con GPG simétrico (AES256) y lo sube al bucket **privado** `db-backups` de
+  Supabase Storage, con 30 días de retención. Antes de subir comprueba que el fichero cifrado
+  se puede descifrar: un backup irrecuperable es peor que no tenerlo. Si la subida falla, el
+  backup local sigue siendo válido y el script avisa sin abortar.
+  - Frase de paso: `/root/.sara-backup-passphrase` (modo 600). **Sin ella los backups remotos
+    no se pueden restaurar.** Debe existir además una copia en el gestor de contraseñas.
+  - Restaurar desde la copia remota:
+    ```bash
+    curl -s -o b.sql.gz.gpg -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+      "$NEXT_PUBLIC_SUPABASE_URL/storage/v1/object/db-backups/<fichero>.sql.gz.gpg"
+    gpg --batch --passphrase-file /root/.sara-backup-passphrase --decrypt b.sql.gz.gpg > b.sql.gz
+    npm run db:restore b.sql.gz
+    ```
+  - Limitación asumida: el bucket vive en el mismo proyecto Supabase que la base que
+    respalda. Cubre la pérdida del VPS, no un compromiso de la cuenta de Supabase; el cifrado
+    GPG es lo que mitiga ese segundo caso.
 - Backup manual: `npm run db:backup`
 - Restaurar: `npm run db:restore <archivo.sql.gz>`
 - Script: `scripts/backup-db.sh` y `scripts/restore-backup.sh`

@@ -44,3 +44,15 @@ echo "Tamaño: $(du -sh "$BACKUP_FILE" | cut -f1)"
 # Borrar backups con más de 30 días
 find "$BACKUP_DIR" -name "*.sql.gz" -mtime +30 -delete
 echo "Backups anteriores (>30 días) eliminados."
+
+# Copia fuera del VPS, cifrada. Si falla, el backup local ya está hecho y es
+# válido, así que se avisa pero no se aborta: perder la copia remota de un día
+# no debe dar por fallado un backup que sí existe.
+OFFSITE="$(dirname "$0")/backup-offsite.sh"
+if [ -x "$OFFSITE" ]; then
+  if ! "$OFFSITE" "$BACKUP_FILE"; then
+    echo "AVISO: falló la subida fuera del VPS; el backup local sí está correcto." >&2
+  fi
+else
+  echo "AVISO: no se encontró $OFFSITE, no hay copia fuera del VPS." >&2
+fi
