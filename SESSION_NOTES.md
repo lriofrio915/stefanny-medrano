@@ -123,19 +123,34 @@ Dos decisiones deliberadas:
 - **`satisfaction-surveys` a la hora en punto + 5 min** para no coincidir con
   `publish-scheduled`. El handler busca citas completadas hace ~2h, el minuto da igual.
 
-### Riesgo abierto: se perdió la copia de backup fuera del VPS
+### Pendiente
 
-`daily-backup.yml` también se borró. Ese workflow subía el dump como artifact de GitHub con
-90 días de retención, y era **la única copia fuera del servidor**. El backup del VPS
-(`/etc/cron.d/sara-backup`, 3:00 local, retención 30 días) sigue corriendo y verificado, pero
-ahora todos los backups viven en la misma máquina que la que habría que restaurar.
-Pendiente: enviar el dump a un destino externo.
+- **Guardar `/root/.sara-backup-passphrase` en el gestor de contraseñas.** Es lo único
+  urgente de esta lista. Hoy la frase existe en un solo sitio: este VPS. Si el VPS se pierde
+  se pierde con él la clave, y las copias cifradas del bucket quedan inservibles — justo el
+  escenario del que la copia remota debía protegernos.
+- **Copia en un proveedor independiente de Supabase** (Backblaze B2 o S3, céntimos al mes
+  para 4.5 MB diarios). El bucket actual está en el mismo proyecto que la base que respalda:
+  cubre la pérdida del VPS, no un compromiso de la cuenta de Supabase. `backup-offsite.sh`
+  ya tiene la estructura, solo cambia el destino de la subida y hace falta crear la cuenta.
+  Decisión del usuario: aplazado, no es bloqueante.
+- **Credenciales viejas en el historial de `gbrain`**, en 8 de los 9 commits. La rotación de
+  Sara ya anuló la exposición y el proyecto de liberty-trading fue borrado, así que no queda
+  nada vivo. Queda la higiene: no volver a pegar credenciales en las notas de sesión. El
+  guardia de secretos de `gbrain-sync.sh` ya se corrigió el 08-09 para detectar los prefijos
+  con guion (`sk-or-v1-…`, `sk-ant-…`, `sk-proj-…`), que antes se colaban.
+- Sigue en pie lo heredado de sesiones anteriores: los 63 lookups `OR: [{ id }, { email }]`
+  que usan `id` donde `doctor-auth.ts` usa `authId`, el import estático de `SaraChatPanel`
+  en `SaraFAB`, y el SEO de las 42 páginas cliente restantes.
 
-### Nota de seguridad, no tocada
+### Resuelto en esta sesión, antes anotado como pendiente
 
-`/var/www/sara-solution/.env` está en modo `644` (legible por cualquier usuario del VPS) y
-contiene `CRON_SECRET` y las credenciales de la base. No se cambió para no romper nada sin
-saber qué otro proceso lo lee. Merece revisión.
+- La copia fuera del VPS que se perdió al borrar `daily-backup.yml` está cubierta por
+  `backup-offsite.sh`.
+- `/var/www/sara-solution/.env` estaba en `644`, legible por cualquier usuario del VPS, con
+  `CRON_SECRET` y las credenciales de la base dentro. Pasado a `600`.
+- `/var/backups/sara-medical/` estaba en `755` con los dumps en `644`. Pasados a `700` y
+  `600`.
 
 ## Sesión 2026-09-06 (noche) — Previsualización de enlaces y nombres de médico
 
