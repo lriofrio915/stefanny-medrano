@@ -34,6 +34,45 @@ el primer 500 de `publish-scheduled` fue a las 10:43 UTC.
 
 Nada de esto toca el schema ni requiere backup previo. Es sólo la credencial.
 
+### Resuelto: la contraseña se había rotado por una filtración, y nadie actualizó a los consumidores
+
+El informe `/root/informes-seguridad/gbrain-credenciales-20260908.json` (generado el 08-09 a
+las 07:39) encontró las credenciales de Postgres de Sara **en claro dentro de la bóveda
+`gbrain`**, en dos notas de sesión y presentes en 8 de los 9 commits de ese repo. La rotación
+fue correcta; lo que faltó fue propagar la clave nueva.
+
+Cuatro ficheros del VPS la usaban y quedaron actualizados:
+`/var/www/sara-solution/.env` (2 cadenas, además pasado de `644` a `600`),
+`/root/.openclaw/workspace-stefy_claw/.env`, `/root/.claude/settings.json` y
+`/root/.claude/settings.local.json`. Script usado: `/root/rotar-sara-db-password.sh`.
+
+Detalle práctico: la contraseña va **URL-encodeada** dentro de la cadena de conexión. La
+anterior era `Luigibella00@@` y en el `.env` figuraba como `Luigibella00%40%40`. Si la nueva
+lleva `@ : / ? # %` hay que codificarla igual o la URL se rompe.
+
+**Sin pérdida de datos.** Conteos actuales contra el dump de las 03:00, previo a la avería:
+Doctor 9/9, Patient 17/17, Prescription 21/21, ExamOrder 3/3, MedicalRecord 0/0,
+Appointment 0/0. Las seis coinciden.
+
+Falsa alarma descartada: el `42501 permission denied for schema public` que devuelve
+PostgREST con la `service_role` es preexistente e irrelevante. La app usa Prisma para los
+datos y Supabase solo para Auth y Storage — todos los `.from(...)` del código son
+`supabase.storage.from(...)`. **No hay que ejecutar ningún GRANT.**
+
+El otro hallazgo del informe, `postgres.nqlvjyeuaxkeufndsfvt` (liberty-trading), no requería
+rotación: ese proyecto Supabase ya no existe, su DNS no resuelve. Liberty-trading usa hoy
+`njszztijddpsbcpfsufi`, que no aparece en la filtración. Se eliminó la entrada MCP muerta
+`supabase-omaria` de `/root/.claude/settings.json`.
+
+### Endurecido el backup
+
+- `/var/backups/sara-medical/` pasa a `700` y los dumps a `600`. Estaban en `644`, legibles
+  por cualquier usuario del VPS, con datos clínicos de pacientes reales dentro.
+- `scripts/backup-db.sh`: `set -eo pipefail` (sin él, un `pg_dump` que falle a mitad deja un
+  `.gz` válido pero truncado, porque el código de salida que veía `set -e` era el de `gzip`),
+  `umask 077`, `chmod 600` al dump, y verificación de que el fichero termina con
+  `PostgreSQL database dump complete` — si no, lo borra y sale con error.
+
 ### Los crons NO estaban migrados; ahora sí
 
 Lo único que había en el VPS era `/etc/cron.d/sara-backup`. Los 8 workflows de
